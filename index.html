@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>共鳴終端 // 星海迴響 Voice AI</title>
+  <title>Anime x 語音日記</title>
   <style>
     /* ====== 全局變數：原神鎏金星空 + 鳴潮黑金輕科幻青 ====== */
     :root {
@@ -549,11 +549,13 @@
     const GEMINI_MODEL = "gemini-3.8-flash";
 
     // ============================================================================
-    // 雙模式設定檔（系統提示詞與字數嚴格限制）
+    // 雙模式設定檔（角色展示文案、系統提示詞與字數限制）
+    // —— 改標題與待命狀態列：編輯各模式的 name、statusTagline
     // ============================================================================
     const MODES = {
       girl: {
         name: "星瞳",
+        statusTagline: "永遠樂於傾聽你的心事",
         badge: "Listener",
         avatar: CUTE_GIRL_AVATAR,
         systemPrompt:
@@ -561,6 +563,7 @@
       },
       expert: {
         name: "智庫終端",
+        statusTagline: "全功能智慧分析機構",
         badge: "TACTICAL ARCHIVE",
         avatar: EXPERT_AVATAR,
         systemPrompt:
@@ -590,10 +593,21 @@
     const recordHint = document.getElementById("recordHint");
     const modelLabel = document.getElementById("modelLabel");
 
+    function applyModeCharacterUI({ preserveStatus = false } = {}) {
+      const cfg = MODES[currentMode];
+      charName.textContent = cfg.name;
+      modeBadge.textContent = cfg.badge;
+      const busy = isRecording || recordBtn.disabled;
+      if (!preserveStatus && !busy) {
+        statusText.textContent = cfg.statusTagline;
+      }
+    }
+
     // 初始化頁面
     function init() {
       modelLabel.textContent = GEMINI_MODEL;
       avatarImg.src = MODES[currentMode].avatar;
+      applyModeCharacterUI();
 
       try {
         const savedKey = sessionStorage.getItem("GEMINI_API_KEY");
@@ -623,8 +637,7 @@
         avatarImg.classList.add("switching");
         setTimeout(() => {
           avatarImg.src = MODES[currentMode].avatar;
-          charName.textContent = MODES[currentMode].name;
-          modeBadge.textContent = MODES[currentMode].badge;
+          applyModeCharacterUI();
           avatarImg.classList.remove("switching");
         }, 220);
       });
