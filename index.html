@@ -521,40 +521,8 @@
      *    const EXPERT_AVATAR    = "./my_expert.jpg";
      */
 
-    // 預設內建：二次元星瞳美少女頭像 (想換圖直接改成 "./你的圖片.png")
-    const CUTE_GIRL_AVATAR = `data:image/svg+xml;utf8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-      <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#2b193d"/>
-          <stop offset="100%" stop-color="#141e38"/>
-        </linearGradient>
-        <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#ff9ec6"/>
-          <stop offset="100%" stop-color="#c95b98"/>
-        </linearGradient>
-      </defs>
-      <rect width="200" height="200" fill="url(#bg)"/>
-      <circle cx="160" cy="40" r="3" fill="#e3c178"/>
-      <circle cx="35" cy="55" r="2.5" fill="#3bf0e4"/>
-      <path d="M40 90 C30 150, 45 190, 60 200 L140 200 C155 190, 170 150, 160 90 Z" fill="url(#hair)"/>
-      <path d="M62 85 C62 135, 82 156, 100 158 C118 156, 138 135, 138 85 Z" fill="#ffe6dc"/>
-      <ellipse cx="76" cy="124" rx="9" ry="4.5" fill="#ff7aa8" opacity="0.55"/>
-      <ellipse cx="124" cy="124" rx="9" ry="4.5" fill="#ff7aa8" opacity="0.55"/>
-      <ellipse cx="80" cy="110" rx="10" ry="12" fill="#3a1f47"/>
-      <ellipse cx="80" cy="112" rx="8" ry="9" fill="#ff6ba3"/>
-      <circle cx="76" cy="105" r="3.5" fill="#ffffff"/>
-      <circle cx="83" cy="115" r="1.8" fill="#ffe680"/>
-      <ellipse cx="120" cy="110" rx="10" ry="12" fill="#3a1f47"/>
-      <ellipse cx="120" cy="112" rx="8" ry="9" fill="#ff6ba3"/>
-      <circle cx="116" cy="105" r="3.5" fill="#ffffff"/>
-      <circle cx="123" cy="115" r="1.8" fill="#ffe680"/>
-      <path d="M93 135 Q96.5 140 100 136 Q103.5 140 107 135" fill="none" stroke="#b85d6f" stroke-width="2.5" stroke-linecap="round"/>
-      <path d="M100 32 C95 15, 115 12, 112 28" fill="none" stroke="#ff9ec6" stroke-width="5" stroke-linecap="round"/>
-      <path d="M45 95 C45 42, 155 42, 155 95 C142 75, 132 95, 122 80 C110 98, 90 98, 78 80 C68 95, 58 75, 45 95 Z" fill="url(#hair)"/>
-      <path d="M142 62 L146 72 L156 76 L146 80 L142 90 L138 80 L128 76 L138 72 Z" fill="#e3c178"/>
-    </svg>
-    `)}`;
+    // 妹子模式頭像（與本頁同目錄的 cute_girl.jpg）
+    const CUTE_GIRL_AVATAR = "./cute_girl.jpg";
 
     // 預設內建：鳴潮輕科幻風「全息智械專家核心」頭像 (想換圖直接改成 "./你的專家圖.png")
     const EXPERT_AVATAR = `data:image/svg+xml;utf8,${encodeURIComponent(`
