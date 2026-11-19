@@ -483,7 +483,7 @@
     <section class="chat-viewport" id="chatViewport">
       <div class="message ai-message">
         <div class="msg-sender">✦ 系統提示</div>
-        <div class="msg-text">嗨！請先在左上方填入 Gemini API Key，然後點擊下方麥克風按鈕對我說話吧～</div>
+        <div class="msg-text" id="welcomeMsgText"></div>
       </div>
     </section>
 
@@ -550,12 +550,15 @@
 
     // ============================================================================
     // 雙模式設定檔（角色展示文案、系統提示詞與字數限制）
-    // —— 改標題與待命狀態列：編輯各模式的 name、statusTagline
+    // —— 改標題與待命狀態列：編輯 name、statusTagline
+    // —— 改對話區開場白：編輯 welcomeMessage
     // ============================================================================
     const MODES = {
       girl: {
         name: "星瞳",
         statusTagline: "永遠樂於傾聽你的心事",
+        welcomeMessage:
+          "嗨呀～✨ 先幫我在左上方把 Gemini API Key 填好喔！然後再點一下下面的麥克風按鈕，跟我說說話吧～我已經準備好要聽你說囉！♡(≧▽≦)♡",
         badge: "Listener",
         avatar: CUTE_GIRL_AVATAR,
         systemPrompt:
@@ -564,6 +567,8 @@
       expert: {
         name: "智庫終端",
         statusTagline: "全功能智慧分析機構",
+        welcomeMessage:
+          "檢測到尚未載入金鑰。請先前往介面上方輸入有效的 Gemini API Key 完成認證，隨後觸發下方麥克風模組建立語音輸入串流。\n\n傳輸通道就緒後，請開始發聲。我正在聆聽。",
         badge: "TACTICAL ARCHIVE",
         avatar: EXPERT_AVATAR,
         systemPrompt:
@@ -592,11 +597,15 @@
     const stopIcon = document.getElementById("stopIcon");
     const recordHint = document.getElementById("recordHint");
     const modelLabel = document.getElementById("modelLabel");
+    const welcomeMsgText = document.getElementById("welcomeMsgText");
 
     function applyModeCharacterUI({ preserveStatus = false } = {}) {
       const cfg = MODES[currentMode];
       charName.textContent = cfg.name;
       modeBadge.textContent = cfg.badge;
+      if (welcomeMsgText) {
+        welcomeMsgText.textContent = cfg.welcomeMessage;
+      }
       const busy = isRecording || recordBtn.disabled;
       if (!preserveStatus && !busy) {
         statusText.textContent = cfg.statusTagline;
