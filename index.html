@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>共鳴終端 // 星海迴響 Voice AI</title>
+  <style>
+    /* ====== 全局變數：原神鎏金星空 + 鳴潮黑金輕科幻青 ====== */
+    :root {
+      --bg-deep: #0b0e17;
+      --panel-bg: rgba(16, 22, 36, 0.78);
+      --gold-accent: #e3c178;      /* 原神風鎏金 */
+      --cyan-glow: #3bf0e4;        /* 鳴潮風共鳴青 */
+      --pink-cute: #ff85b3;        /* 妹子模式主題色 */
+      --theme-active: var(--pink-cute);
+      --text-main: #f0f4ff;
+      --text-sub: #9aa7c2;
+    }
+
+    /* 切換到專家模式時的全局主題色變化 */
+    body.expert-theme {
+      --theme-active: var(--cyan-glow);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "PingFang TC", "PingFang SC", "Microsoft JhengHei", "Microsoft YaHei", "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 50% 15%, #1c2541 0%, var(--bg-deep) 75%);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* 背景科技網格與星塵裝飾 */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(227, 193, 120, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(227, 193, 120, 0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .bg-particles {
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(var(--gold-accent) 1px, transparent 1px);
+      background-size: 90px 90px;
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* 主終端玻璃擬態容器 */
+    .terminal-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 780px;
+      height: 86vh;
+      min-height: 620px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(227, 193, 120, 0.35);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), inset 0 0 30px rgba(227, 193, 120, 0.05);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 28px;
+      transition: border-color 0.4s ease;
+    }
+
+    /* 四角菱形鎏金裝飾 */
+    .corner {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--gold-accent);
+      pointer-events: none;
+    }
+    .corner-tl { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+    .corner-tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }
+    .corner-bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
+    .corner-br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+
+    /* 頂部設定欄 */
+    .top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .api-box {
+      display: flex;
+      align-items: center;
+      background: rgba(8, 11, 20, 0.7);
+      border: 1px solid rgba(227, 193, 120, 0.3);
+      border-radius: 8px;
+      padding: 6px 12px;
+      flex: 1;
+      min-width: 230px;
+    }
+
+    .label-tag {
+      font-size: 12px;
+      color: var(--gold-accent);
+      font-weight: bold;
+      margin-right: 10px;
+      white-space: nowrap;
+      letter-spacing: 1px;
+    }
+
+    .api-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      width: 100%;
+      font-size: 13px;
+    }
+
+    /* 模式切換按鈕組 */
+    .mode-switcher {
+      display: flex;
+      background: rgba(8, 11, 20, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 30px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .mode-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-sub);
+      padding: 7px 16px;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .mode-btn:hover {
+      color: var(--text-main);
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, var(--theme-active), rgba(227, 193, 120, 0.85));
+      color: #0b0e17;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.25);
+    }
+
+    /* 角色頭像與狀態展示區 */
+    .character-stage {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 20px 6px;
+    }
+
+    .avatar-wrapper {
+      position: relative;
+      width: 108px;
+      height: 108px;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .orbit-ring {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1.5px dashed var(--theme-active);
+      opacity: 0.75;
+      animation: spinSlow 18s linear infinite;
+      transition: border-color 0.4s ease;
+    }
+
+    @keyframes spinSlow {
+      to { transform: rotate(360deg); }
+    }
+
+    .avatar-frame {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 2.5px solid var(--gold-accent);
+      box-shadow: 0 0 22px rgba(227, 193, 120, 0.28);
+      overflow: hidden;
+      background: #141a29;
+    }
+
+    .avatar-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* 自動完美居中裁切不變形 */
+      transition: opacity 0.25s ease, transform 0.35s ease;
+    }
+
+    .avatar-frame img.switching {
+      opacity: 0;
+      transform: scale(0.88);
+    }
+
+    .mode-badge {
+      position: absolute;
+      bottom: -8px;
+      background: #0b0e17;
+      border: 1px solid var(--gold-accent);
+      color: var(--gold-accent);
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .character-info h1 {
+      font-size: 22px;
+      letter-spacing: 1px;
+      color: var(--text-main);
+      text-shadow: 0 0 12px rgba(227, 193, 120, 0.35);
+      margin-bottom: 8px;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #4cd964;
+      box-shadow: 0 0 8px #4cd964;
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.recording {
+      background: #ff3b5c;
+      box-shadow: 0 0 12px #ff3b5c;
+      animation: blink 0.8s infinite alternate;
+    }
+
+    .status-dot.thinking {
+      background: var(--cyan-glow);
+      box-shadow: 0 0 12px var(--cyan-glow);
+    }
+
+    @keyframes blink {
+      from { opacity: 0.4; }
+      to { opacity: 1; }
+    }
+
+    /* 對話記錄視口 */
+    .chat-viewport {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: rgba(9, 13, 22, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .chat-viewport::-webkit-scrollbar {
+      width: 6px;
+    }
+    .chat-viewport::-webkit-scrollbar-thumb {
+      background: rgba(227, 193, 120, 0.3);
+      border-radius: 4px;
+    }
+
+    .message {
+      max-width: 88%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.65;
+      font-size: 15px;
+      animation: fadeInUp 0.3s ease;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .user-message {
+      align-self: flex-end;
+      background: linear-gradient(135deg, rgba(227, 193, 120, 0.22), rgba(227, 193, 120, 0.08));
+      border: 1px solid rgba(227, 193, 120, 0.4);
+      color: var(--gold-accent);
+      font-size: 13px;
+    }
+
+    .ai-message {
+      align-self: flex-start;
+      background: rgba(26, 35, 58, 0.85);
+      border-left: 3px solid var(--theme-active);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    }
+
+    .msg-sender {
+      font-size: 12px;
+      color: var(--theme-active);
+      font-weight: bold;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    /* 底部錄音控制甲板 */
+    .control-deck {
+      padding-top: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .model-tag {
+      position: absolute;
+      left: 0;
+      bottom: 4px;
+      font-size: 11px;
+      color: rgba(154, 167, 194, 0.55);
+      letter-spacing: 1px;
+    }
+
+    .record-btn {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      border: 2px solid var(--gold-accent);
+      background: radial-gradient(circle, #232f4d 0%, #101626 100%);
+      color: var(--gold-accent);
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 20px rgba(227, 193, 120, 0.25);
+    }
+
+    .record-btn:hover {
+      transform: scale(1.06);
+      box-shadow: 0 0 28px rgba(227, 193, 120, 0.5);
+    }
+
+    .record-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .record-btn svg {
+      width: 28px;
+      height: 28px;
+      z-index: 2;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* 錄音進行中的聲波擴散光效 */
+    .record-btn.recording {
+      border-color: #ff3b5c;
+      color: #ff3b5c;
+      background: radial-gradient(circle, #3d1422 0%, #16080e 100%);
+    }
+
+    .pulse-ring {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid #ff3b5c;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .record-btn.recording .pulse-ring {
+      animation: soundWave 1.6s ease-out infinite;
+    }
+
+    .record-btn.recording .pulse-ring.delay {
+      animation-delay: 0.8s;
+    }
+
+    @keyframes soundWave {
+      0% { transform: scale(1); opacity: 0.85; }
+      100% { transform: scale(1.75); opacity: 0; }
+    }
+
+    .record-hint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-sub);
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+  <!-- 背景星空與鳴潮風網格裝飾 -->
+  <div class="bg-particles"></div>
+  <div class="bg-grid"></div>
+
+  <main class="terminal-container">
+    <!-- 四角二次元鎏金裝飾邊角 -->
+    <span class="corner corner-tl"></span>
+    <span class="corner corner-tr"></span>
+    <span class="corner corner-bl"></span>
+    <span class="corner corner-br"></span>
+
+    <!-- 頂部欄：API Key 與 模式切換 -->
+    <header class="top-bar">
+      <div class="api-box">
+        <span class="label-tag">✦ API KEY</span>
+        <input 
+          type="password" 
+          id="apiKeyInput" 
+          placeholder="貼上你的 Gemini API Key..." 
+          autocomplete="off"
+        />
+      </div>
+
+      <div class="mode-switcher" id="modeSwitcher">
+        <button class="mode-btn active" data-mode="girl">🌸 妹子模式 (≤20字)</button>
+        <button class="mode-btn" data-mode="expert">💠 專家模式 (≤1000字)</button>
+      </div>
+    </header>
+
+    <!-- 角色頭像與狀態展示區 -->
+    <section class="character-stage">
+      <div class="avatar-wrapper" id="avatarWrapper">
+        <div class="orbit-ring"></div>
+        <div class="avatar-frame">
+          <img id="avatarImg" src="" alt="角色頭像" />
+        </div>
+        <div class="mode-badge" id="modeBadge">CUTE RESONATOR</div>
+      </div>
+
+      <div class="character-info">
+        <h1 id="charName">星瞳 · 看板娘</h1>
+        <div class="status-bar">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">終端待命中 · 點擊下方按鈕開始語音共鳴</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 劇情/終端對話歷史記錄區 -->
+    <section class="chat-viewport" id="chatViewport">
+      <div class="message ai-message">
+        <div class="msg-sender">✦ 系統提示</div>
+        <div class="msg-text">旅行者 / 漂泊者你好！請先在左上方填入 Gemini API Key，然後點擊下方麥克風按鈕對我說話吧～</div>
+      </div>
+    </section>
+
+    <!-- 底部語音控制區 -->
+    <footer class="control-deck">
+      <div class="model-tag">ENGINE // <span id="modelLabel">gemini-3.8-flash</span></div>
+      
+      <button class="record-btn" id="recordBtn" title="點擊開始/結束錄音">
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring delay"></div>
+        <!-- 麥克風圖示 / 停止圖示 -->
+        <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="8" y1="22" x2="16" y2="22"/>
+        </svg>
+        <svg id="stopIcon" class="hidden" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+        </svg>
+      </button>
+
+      <div class="record-hint" id="recordHint">點擊開始錄音</div>
+    </footer>
+  </main>
+
+  <script>
+    /**
+     * ============================================================================
+     * 🎨 【頭像與模型設定區】 —— 以後換頭像、改模型只需要改這裡！
+     * ============================================================================
+     * 替換頭像步驟：
+     * 1. 把你喜歡的圖片放在跟這個 .html 檔案「同一個資料夾」裡（支援 .png / .jpg / .webp / .gif）
+     * 2. 把下面 CUTE_GIRL_AVATAR 或 EXPERT_AVATAR 等號後面的內容，改成你的圖片檔名，例如：
+     *    const CUTE_GIRL_AVATAR = "./my_girl.png";
+     *    const EXPERT_AVATAR    = "./my_expert.jpg";
+     */
+
+    // 預設內建：二次元星瞳美少女頭像 (想換圖直接改成 "./你的圖片.png")
+    const CUTE_GIRL_AVATAR = `data:image/svg+xml;utf8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#2b193d"/>
+          <stop offset="100%" stop-color="#141e38"/>
+        </linearGradient>
+        <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ff9ec6"/>
+          <stop offset="100%" stop-color="#c95b98"/>
+        </linearGradient>
+      </defs>
+      <rect width="200" height="200" fill="url(#bg)"/>
+      <circle cx="160" cy="40" r="3" fill="#e3c178"/>
+      <circle cx="35" cy="55" r="2.5" fill="#3bf0e4"/>
+      <path d="M40 90 C30 150, 45 190, 60 200 L140 200 C155 190, 170 150, 160 90 Z" fill="url(#hair)"/>
+      <path d="M62 85 C62 135, 82 156, 100 158 C118 156, 138 135, 138 85 Z" fill="#ffe6dc"/>
+      <ellipse cx="76" cy="124" rx="9" ry="4.5" fill="#ff7aa8" opacity="0.55"/>
+      <ellipse cx="124" cy="124" rx="9" ry="4.5" fill="#ff7aa8" opacity="0.55"/>
+      <ellipse cx="80" cy="110" rx="10" ry="12" fill="#3a1f47"/>
+      <ellipse cx="80" cy="112" rx="8" ry="9" fill="#ff6ba3"/>
+      <circle cx="76" cy="105" r="3.5" fill="#ffffff"/>
+      <circle cx="83" cy="115" r="1.8" fill="#ffe680"/>
+      <ellipse cx="120" cy="110" rx="10" ry="12" fill="#3a1f47"/>
+      <ellipse cx="120" cy="112" rx="8" ry="9" fill="#ff6ba3"/>
+      <circle cx="116" cy="105" r="3.5" fill="#ffffff"/>
+      <circle cx="123" cy="115" r="1.8" fill="#ffe680"/>
+      <path d="M93 135 Q96.5 140 100 136 Q103.5 140 107 135" fill="none" stroke="#b85d6f" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M100 32 C95 15, 115 12, 112 28" fill="none" stroke="#ff9ec6" stroke-width="5" stroke-linecap="round"/>
+      <path d="M45 95 C45 42, 155 42, 155 95 C142 75, 132 95, 122 80 C110 98, 90 98, 78 80 C68 95, 58 75, 45 95 Z" fill="url(#hair)"/>
+      <path d="M142 62 L146 72 L156 76 L146 80 L142 90 L138 80 L128 76 L138 72 Z" fill="#e3c178"/>
+    </svg>
+    `)}`;
+
+    // 預設內建：鳴潮輕科幻風「全息智械專家核心」頭像 (想換圖直接改成 "./你的專家圖.png")
+    const EXPERT_AVATAR = `data:image/svg+xml;utf8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+      <defs>
+        <radialGradient id="coreBg" cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stop-color="#122b38"/>
+          <stop offset="100%" stop-color="#070b12"/>
+        </radialGradient>
+      </defs>
+      <rect width="200" height="200" fill="url(#coreBg)"/>
+      <circle cx="100" cy="100" r="72" fill="none" stroke="#e3c178" stroke-width="1.5" stroke-dasharray="8 6" opacity="0.7"/>
+      <circle cx="100" cy="100" r="56" fill="none" stroke="#3bf0e4" stroke-width="2" opacity="0.85"/>
+      <polygon points="100,52 142,76 142,124 100,148 58,124 58,76" fill="rgba(59,240,228,0.12)" stroke="#3bf0e4" stroke-width="2"/>
+      <path d="M100 62 L110 90 L138 100 L110 110 L100 138 L90 110 L62 100 L90 90 Z" fill="#3bf0e4"/>
+      <circle cx="100" cy="100" r="8" fill="#ffffff"/>
+      <line x1="25" y1="100" x2="48" y2="100" stroke="#e3c178" stroke-width="2"/>
+      <line x1="152" y1="100" x2="175" y2="100" stroke="#e3c178" stroke-width="2"/>
+    </svg>
+    `)}`;
+
+    // Gemini 3 系列最適合音訊直傳理解的主力模型 (亦可改為 "gemini-3.5-flash-lite")
+    const GEMINI_MODEL = "gemini-3.8-flash";
+
+    // ============================================================================
+    // 雙模式設定檔（系統提示詞與字數嚴格限制）
+    // ============================================================================
+    const MODES = {
+      girl: {
+        name: "星瞳 · 看板娘",
+        badge: "CUTE RESONATOR",
+        avatar: CUTE_GIRL_AVATAR,
+        systemPrompt:
+          "你是一個活潑、軟萌、元氣滿滿的二次元美少女（風格參考原神與鳴潮的角色語氣）。請直接聽取使用者的語音，並用可愛的中文直接回答使用者，不要複述使用者的原話。嚴格死命令：每次回覆的總字數（含標點符號）絕對不能超過20個字！必須簡短俏皮！"
+      },
+      expert: {
+        name: "瑝瓏 · 智庫終端",
+        badge: "TACTICAL ARCHIVE",
+        avatar: EXPERT_AVATAR,
+        systemPrompt:
+          "你是一個嚴謹、淵博、邏輯清晰的頂級領域專家。請聽取使用者的語音輸入，直接用結構清晰、專業準確的中文回答使用者的問題，不需要先輸出語音轉寫原文。嚴格限制：每次回覆請控制在1000個中文字以內。"
+      }
+    };
+
+    // ============================================================================
+    // 狀態與 DOM 元素綁定
+    // ============================================================================
+    let currentMode = "girl";
+    let isRecording = false;
+    let mediaRecorder = null;
+    let audioChunks = [];
+
+    const apiKeyInput = document.getElementById("apiKeyInput");
+    const modeBtns = document.querySelectorAll(".mode-btn");
+    const avatarImg = document.getElementById("avatarImg");
+    const modeBadge = document.getElementById("modeBadge");
+    const charName = document.getElementById("charName");
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const chatViewport = document.getElementById("chatViewport");
+    const recordBtn = document.getElementById("recordBtn");
+    const micIcon = document.getElementById("micIcon");
+    const stopIcon = document.getElementById("stopIcon");
+    const recordHint = document.getElementById("recordHint");
+    const modelLabel = document.getElementById("modelLabel");
+
+    // 初始化頁面
+    function init() {
+      modelLabel.textContent = GEMINI_MODEL;
+      avatarImg.src = MODES[currentMode].avatar;
+
+      try {
+        const savedKey = sessionStorage.getItem("GEMINI_API_KEY");
+        if (savedKey) apiKeyInput.value = savedKey;
+        apiKeyInput.addEventListener("input", () => {
+          sessionStorage.setItem("GEMINI_API_KEY", apiKeyInput.value.trim());
+        });
+      } catch (e) {
+        // 忽略部分嚴格本地 file:// 隱私模式下的 storage 限制
+      }
+    }
+
+    // ============================================================================
+    // 模式切換與頭像動畫邏輯
+    // ============================================================================
+    modeBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const selected = btn.dataset.mode;
+        if (selected === currentMode) return;
+
+        currentMode = selected;
+        modeBtns.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        document.body.classList.toggle("expert-theme", currentMode === "expert");
+
+        avatarImg.classList.add("switching");
+        setTimeout(() => {
+          avatarImg.src = MODES[currentMode].avatar;
+          charName.textContent = MODES[currentMode].name;
+          modeBadge.textContent = MODES[currentMode].badge;
+          avatarImg.classList.remove("switching");
+        }, 220);
+      });
+    });
+
+    // ============================================================================
+    // 錄音按鈕：按一下開始錄音，再按一下結束並發送給 Gemini 3.8
+    // ============================================================================
+    recordBtn.addEventListener("click", async () => {
+      if (!apiKeyInput.value.trim()) {
+        alert("請先在左上角輸入你的 Gemini API Key 喔！");
+        apiKeyInput.focus();
+        return;
+      }
+
+      if (!isRecording) {
+        await startRecording();
+      } else {
+        stopRecording();
+      }
+    });
+
+    function getSupportedMimeType() {
+      const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
+      for (const type of types) {
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) return type;
+      }
+      return "";
+    }
+
+    async function startRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = getSupportedMimeType();
+        mediaRecorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream);
+
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach((track) => track.stop());
+
+          const finalMime = (mediaRecorder.mimeType || "audio/webm").split(";")[0];
+          const audioBlob = new Blob(audioChunks, { type: finalMime });
+
+          if (audioBlob.size < 500) {
+            updateStatus("idle", "錄音時間太短啦，請再試一次～");
+            return;
+          }
+
+          appendMessage("user", "🎙️ [已發送一段共鳴語音]");
+          await sendAudioToGemini(audioBlob, finalMime);
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+
+        recordBtn.classList.add("recording");
+        micIcon.classList.add("hidden");
+        stopIcon.classList.remove("hidden");
+        recordHint.textContent = "正在傾聽... 再按一下結束並發送";
+        updateStatus("recording", "聲痕收音中 · 請開始說話...");
+      } catch (err) {
+        console.error("麥克風調用失敗：", err);
+        alert("無法存取麥克風！請在瀏覽器彈窗點擊「允許」麥克風權限（建議使用 Chrome 或 Edge 開啟）。");
+      }
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+      isRecording = false;
+
+      recordBtn.classList.remove("recording");
+      micIcon.classList.remove("hidden");
+      stopIcon.classList.add("hidden");
+      recordHint.textContent = "點擊開始錄音";
+    }
+
+    // ============================================================================
+    // 將音訊轉為 Base64 並直傳 Gemini 3.8 Flash API
+    // ============================================================================
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result.split(",")[1];
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function sendAudioToGemini(audioBlob, mimeType) {
+      const apiKey = apiKeyInput.value.trim();
+      const activeConfig = MODES[currentMode];
+
+      updateStatus("thinking", `${activeConfig.name} 正在解析語音共鳴...`);
+      recordBtn.disabled = true;
+
+      try {
+        const base64Audio = await blobToBase64(audioBlob);
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+        const requestBody = {
+          systemInstruction: {
+            parts: [{ text: activeConfig.systemPrompt }]
+          },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: mimeType,
+                    data: base64Audio
+                  }
+                },
+                {
+                  text:
+                    currentMode === "girl"
+                      ? "請聽這段語音並用可愛女生的語氣直接回覆我，絕對不要超過20個字！"
+                      : "請聽這段語音並以專家身分詳細、嚴謹地回覆我，控制在1000個字以內。"
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: currentMode === "girl" ? 0.85 : 0.4
+          }
+        };
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error?.message || `HTTP Error ${response.status}`);
+        }
+
+        let replyText =
+          data?.candidates?.[0]?.content?.parts
+            ?.map((p) => p.text || "")
+            .join("")
+            .trim() || "（未收到文字回覆）";
+
+        // 雙重保險：確保字數絕對符合規範
+        if (currentMode === "girl" && [...replyText].length > 20) {
+          replyText = [...replyText].slice(0, 19).join("") + "～";
+        } else if (currentMode === "expert" && [...replyText].length > 1000) {
+          replyText = [...replyText].slice(0, 997).join("") + "...";
+        }
+
+        appendMessage("ai", replyText, activeConfig.name);
+        updateStatus("idle", "共鳴完成 · 點擊下方按鈕繼續對話");
+      } catch (error) {
+        console.error("Gemini API 調用錯誤：", error);
+        appendMessage("ai", `⚠️ 終端連線異常：${error.message}`, "系統警告");
+        updateStatus("idle", "請求失敗 · 請檢查 API Key 或網路連線");
+      } finally {
+        recordBtn.disabled = false;
+      }
+    }
+
+    // ============================================================================
+    // 畫面輔助函式
+    // ============================================================================
+    function appendMessage(type, text, senderName = "") {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `message ${type === "user" ? "user-message" : "ai-message"}`;
+
+      if (type === "ai") {
+        const senderDiv = document.createElement("div");
+        senderDiv.className = "msg-sender";
+        senderDiv.textContent = `✦ ${senderName}`;
+        msgDiv.appendChild(senderDiv);
+      }
+
+      const textDiv = document.createElement("div");
+      textDiv.className = "msg-text";
+      textDiv.textContent = text;
+      msgDiv.appendChild(textDiv);
+
+      chatViewport.appendChild(msgDiv);
+      chatViewport.scrollTop = chatViewport.scrollHeight;
+    }
+
+    function updateStatus(state, message) {
+      statusDot.className = "status-dot";
+      if (state === "recording") statusDot.classList.add("recording");
+      if (state === "thinking") statusDot.classList.add("thinking");
+      statusText.textContent = message;
+    }
+
+    init();
+  </script>
+</body>
+</html>
