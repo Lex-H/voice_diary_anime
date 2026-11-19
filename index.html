@@ -168,6 +168,125 @@
       box-shadow: 0 0 15px rgba(255, 255, 255, 0.25);
     }
 
+    .top-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    body.view-diary #modeSwitcher {
+      display: none;
+    }
+
+    .view-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    body.view-diary #chatView,
+    body.view-chat #diaryView {
+      display: none;
+    }
+
+    .date-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 16px 2px 12px;
+    }
+
+    .date-strip::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .date-strip::-webkit-scrollbar-thumb {
+      background: rgba(227, 193, 120, 0.3);
+      border-radius: 4px;
+    }
+
+    .date-btn {
+      flex: 0 0 auto;
+      background: rgba(8, 11, 20, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-sub);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .date-btn.active {
+      background: linear-gradient(135deg, var(--gold-accent), rgba(227, 193, 120, 0.75));
+      color: #0b0e17;
+      border-color: transparent;
+    }
+
+    .diary-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 16px;
+      background: rgba(9, 13, 22, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 12px;
+      line-height: 1.75;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .diary-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .diary-body::-webkit-scrollbar-thumb {
+      background: rgba(227, 193, 120, 0.3);
+      border-radius: 4px;
+    }
+
+    .diary-empty {
+      color: var(--text-sub);
+    }
+
+    .diary-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding-top: 16px;
+    }
+
+    .diary-btn {
+      background: transparent;
+      border: 1px solid var(--gold-accent);
+      color: var(--gold-accent);
+      border-radius: 999px;
+      padding: 10px 22px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+
+    .diary-btn:hover {
+      box-shadow: 0 0 18px rgba(227, 193, 120, 0.35);
+    }
+
+    .diary-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .diary-status {
+      min-height: 18px;
+      font-size: 12px;
+      color: var(--text-sub);
+      letter-spacing: 0.5px;
+    }
+
     /* 角色頭像與狀態展示區 */
     .character-stage {
       display: flex;
@@ -429,7 +548,7 @@
     }
   </style>
 </head>
-<body>
+<body class="view-chat">
   <!-- 背景星空與鳴潮風網格裝飾 -->
   <div class="bg-particles"></div>
   <div class="bg-grid"></div>
@@ -453,12 +572,19 @@
         />
       </div>
 
-      <div class="mode-switcher" id="modeSwitcher">
-        <button class="mode-btn active" data-mode="girl">🌸 星瞳</button>
-        <button class="mode-btn" data-mode="expert">💠 智庫終端</button>
+      <div class="top-actions">
+        <div class="mode-switcher" id="viewSwitcher">
+          <button class="mode-btn active" data-view="chat">對話</button>
+          <button class="mode-btn" data-view="diary">日記</button>
+        </div>
+        <div class="mode-switcher" id="modeSwitcher">
+          <button class="mode-btn active" data-mode="girl">🌸 星瞳</button>
+          <button class="mode-btn" data-mode="expert">💠 智庫終端</button>
+        </div>
       </div>
     </header>
 
+    <div class="view-panel" id="chatView">
     <!-- 角色頭像與狀態展示區 -->
     <section class="character-stage">
       <div class="avatar-wrapper" id="avatarWrapper">
@@ -508,6 +634,16 @@
 
       <div class="record-hint" id="recordHint">點擊開始錄音</div>
     </footer>
+    </div>
+
+    <div class="view-panel" id="diaryView">
+      <div class="date-strip" id="dateStrip"></div>
+      <div class="diary-body" id="diaryBody"></div>
+      <div class="diary-actions">
+        <button class="diary-btn" id="diaryBtn" type="button">生成這一天的日記</button>
+        <div class="diary-status" id="diaryStatus"></div>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -547,6 +683,10 @@
 
     // Gemini 3 系列最適合音訊直傳理解的主力模型 (亦可改為 "gemini-3.5-flash-lite")
     const GEMINI_MODEL = "gemini-3.8-flash";
+    const CHAT_STORAGE_KEY = "voice_diary_chats";
+    const DIARY_STORAGE_KEY = "voice_diary_entries";
+    const DIARY_PROMPT =
+      "你是語音日記的整理者。下面是使用者這一天與 AI 的對話紀錄。請用繁體中文寫一篇日記：先總結今天實際出現過的內容，再給出具體、溫和的建議。不要捏造紀錄裡沒有的事實。";
 
     // ============================================================================
     // 雙模式設定檔（角色展示文案、系統提示詞與字數限制）
@@ -580,7 +720,10 @@
     // 狀態與 DOM 元素綁定
     // ============================================================================
     let currentMode = "girl";
+    let currentView = "chat";
+    let selectedDiaryDate = "";
     let isRecording = false;
+    let diaryGenerating = false;
     let mediaRecorder = null;
     let audioChunks = [];
 
@@ -598,6 +741,104 @@
     const recordHint = document.getElementById("recordHint");
     const modelLabel = document.getElementById("modelLabel");
     const welcomeMsgText = document.getElementById("welcomeMsgText");
+    const viewBtns = document.querySelectorAll("#viewSwitcher .mode-btn");
+    const dateStrip = document.getElementById("dateStrip");
+    const diaryBody = document.getElementById("diaryBody");
+    const diaryBtn = document.getElementById("diaryBtn");
+    const diaryStatus = document.getElementById("diaryStatus");
+
+    function formatDateKey(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatClock(date) {
+      return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    }
+
+    function shiftDateKey(daysAgo) {
+      const date = new Date();
+      date.setHours(12, 0, 0, 0);
+      date.setDate(date.getDate() - daysAgo);
+      return formatDateKey(date);
+    }
+
+    function readJson(key) {
+      try {
+        return JSON.parse(localStorage.getItem(key) || "{}");
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function writeJson(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function getChats() {
+      const data = readJson(CHAT_STORAGE_KEY);
+      return data && typeof data === "object" ? data : {};
+    }
+
+    function getDiaries() {
+      const data = readJson(DIARY_STORAGE_KEY);
+      return data && typeof data === "object" ? data : {};
+    }
+
+    function getDayMessages(dateKey) {
+      const list = getChats()[dateKey];
+      return Array.isArray(list) ? list : [];
+    }
+
+    function saveChatMessage(entry) {
+      const chats = getChats();
+      const dateKey = entry.date;
+      chats[dateKey] = Array.isArray(chats[dateKey]) ? chats[dateKey] : [];
+      chats[dateKey].push(entry);
+      writeJson(CHAT_STORAGE_KEY, chats);
+    }
+
+    function dateLabel(dateKey) {
+      const today = shiftDateKey(0);
+      const yesterday = shiftDateKey(1);
+      const before = shiftDateKey(2);
+      const [, month, day] = dateKey.split("-");
+      const shortDate = `${Number(month)}/${Number(day)}`;
+      if (dateKey === today) return `今天 ${shortDate}`;
+      if (dateKey === yesterday) return `昨天 ${shortDate}`;
+      if (dateKey === before) return `前天 ${shortDate}`;
+      return dateKey.replace(/-/g, "/");
+    }
+
+    function listDiaryDates() {
+      const keys = new Set([shiftDateKey(0), shiftDateKey(1), shiftDateKey(2)]);
+      Object.keys(getChats()).forEach((key) => keys.add(key));
+      Object.keys(getDiaries()).forEach((key) => keys.add(key));
+      return [...keys].filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)).sort().reverse();
+    }
+
+    function loadApiKey() {
+      try {
+        let savedKey = localStorage.getItem("GEMINI_API_KEY");
+        if (!savedKey) {
+          savedKey = sessionStorage.getItem("GEMINI_API_KEY");
+          if (savedKey) localStorage.setItem("GEMINI_API_KEY", savedKey);
+        }
+        return savedKey || "";
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function saveApiKey(value) {
+      try {
+        localStorage.setItem("GEMINI_API_KEY", value.trim());
+      } catch (e) {
+        // 忽略部分嚴格本地 file:// 隱私模式下的 storage 限制
+      }
+    }
 
     function applyModeCharacterUI({ preserveStatus = false } = {}) {
       const cfg = MODES[currentMode];
@@ -612,21 +853,79 @@
       }
     }
 
+    function showView(view) {
+      currentView = view === "diary" ? "diary" : "chat";
+      document.body.classList.toggle("view-chat", currentView === "chat");
+      document.body.classList.toggle("view-diary", currentView === "diary");
+      viewBtns.forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.view === currentView);
+      });
+      if (currentView === "diary") renderDiary();
+    }
+
+    function renderDiary() {
+      const dates = listDiaryDates();
+      if (!dates.includes(selectedDiaryDate)) selectedDiaryDate = dates[0];
+      dateStrip.innerHTML = "";
+      dates.forEach((dateKey) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `date-btn${dateKey === selectedDiaryDate ? " active" : ""}`;
+        btn.textContent = dateLabel(dateKey);
+        btn.addEventListener("click", () => {
+          selectedDiaryDate = dateKey;
+          diaryStatus.textContent = "";
+          renderDiary();
+        });
+        dateStrip.appendChild(btn);
+      });
+
+      const entry = getDiaries()[selectedDiaryDate];
+      diaryBody.innerHTML = "";
+      if (entry && entry.text) {
+        diaryBody.textContent = entry.text;
+      } else {
+        const empty = document.createElement("div");
+        empty.className = "diary-empty";
+        empty.textContent = "這一天還沒有日記";
+        diaryBody.appendChild(empty);
+      }
+      diaryBtn.textContent = entry && entry.text ? "重新生成這一天的日記" : "生成這一天的日記";
+      diaryBtn.disabled = diaryGenerating;
+    }
+
+    function renderTodayChat() {
+      chatViewport.querySelectorAll(".message.stored").forEach((node) => node.remove());
+      getDayMessages(formatDateKey(new Date())).forEach((msg) => {
+        appendMessage(msg.role === "user" ? "user" : "ai", msg.text, msg.sender || "", { persist: false });
+      });
+    }
+
+    viewBtns.forEach((btn) => {
+      btn.addEventListener("click", () => showView(btn.dataset.view));
+    });
+
+    diaryBtn.addEventListener("click", () => {
+      generateDiary(selectedDiaryDate, { manual: true });
+    });
+
     // 初始化頁面
     function init() {
       modelLabel.textContent = GEMINI_MODEL;
       avatarImg.src = MODES[currentMode].avatar;
+      selectedDiaryDate = shiftDateKey(0);
       applyModeCharacterUI();
+      renderTodayChat();
+      showView("chat");
 
-      try {
-        const savedKey = sessionStorage.getItem("GEMINI_API_KEY");
-        if (savedKey) apiKeyInput.value = savedKey;
-        apiKeyInput.addEventListener("input", () => {
-          sessionStorage.setItem("GEMINI_API_KEY", apiKeyInput.value.trim());
-        });
-      } catch (e) {
-        // 忽略部分嚴格本地 file:// 隱私模式下的 storage 限制
-      }
+      const savedKey = loadApiKey();
+      if (savedKey) apiKeyInput.value = savedKey;
+      const commitApiKey = () => saveApiKey(apiKeyInput.value);
+      apiKeyInput.addEventListener("change", commitApiKey);
+      apiKeyInput.addEventListener("blur", commitApiKey);
+
+      scheduleDiaryTick();
+      maybeCatchUpDiary();
     }
 
     // ============================================================================
@@ -656,6 +955,7 @@
     // 錄音按鈕：按一下開始錄音，再按一下結束並發送給 Gemini 3.8
     // ============================================================================
     recordBtn.addEventListener("click", async () => {
+      saveApiKey(apiKeyInput.value);
       if (!apiKeyInput.value.trim()) {
         alert("請先在左上角輸入你的 Gemini API Key 喔！");
         apiKeyInput.focus();
@@ -704,8 +1004,9 @@
             return;
           }
 
-          appendMessage("user", "🎙️ [已發送一段共鳴語音]");
-          await sendAudioToGemini(audioBlob, finalMime);
+          const priorMessages = getDayMessages(formatDateKey(new Date()));
+          const userBubble = appendMessage("user", "正在把你的話轉成文字…", "", { persist: false });
+          await sendAudioToGemini(audioBlob, finalMime, priorMessages, userBubble);
         };
 
         mediaRecorder.start();
@@ -749,7 +1050,33 @@
       });
     }
 
-    async function sendAudioToGemini(audioBlob, mimeType) {
+    function foldConversation(messages) {
+      const contents = [];
+      messages.forEach((msg) => {
+        const role = msg.role === "model" ? "model" : "user";
+        const text = msg.sender ? `（${msg.sender}）${msg.text}` : msg.text;
+        const last = contents[contents.length - 1];
+        if (last && last.role === role) {
+          last.parts[0].text += `\n${text}`;
+        } else {
+          contents.push({ role, parts: [{ text }] });
+        }
+      });
+      return contents;
+    }
+
+    function parseVoicePayload(raw) {
+      let text = String(raw || "").trim();
+      const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fenced) text = fenced[1].trim();
+      const data = JSON.parse(text);
+      return {
+        transcript: String(data.transcript || "").trim(),
+        reply: String(data.reply || "").trim()
+      };
+    }
+
+    async function sendAudioToGemini(audioBlob, mimeType, priorMessages, userBubble) {
       const apiKey = apiKeyInput.value.trim();
       const activeConfig = MODES[currentMode];
 
@@ -759,32 +1086,46 @@
       try {
         const base64Audio = await blobToBase64(audioBlob);
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const contents = foldConversation(priorMessages);
+        const currentParts = [
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Audio
+            }
+          },
+          {
+            text:
+              currentMode === "girl"
+                ? "請聽這段語音。transcript 寫成我原本說的話，不要改寫。reply 用可愛女生的語氣直接回覆，絕對不要超過20個字。"
+                : "請聽這段語音。transcript 寫成我原本說的話，不要改寫。reply 以專家身分詳細、嚴謹地回覆，控制在1000個字以內。"
+          }
+        ];
+        const last = contents[contents.length - 1];
+        if (last && last.role === "user") {
+          last.parts.push(...currentParts);
+        } else {
+          contents.push({ role: "user", parts: currentParts });
+        }
 
         const requestBody = {
           systemInstruction: {
-            parts: [{ text: activeConfig.systemPrompt }]
+            parts: [{
+              text: `${activeConfig.systemPrompt}\n回覆必須是 JSON 物件，不要加 markdown。transcript 是使用者語音的逐字稿，保留原本用詞。reply 才是你的回答，並遵守上面的字數與語氣限制。`
+            }]
           },
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  inlineData: {
-                    mimeType: mimeType,
-                    data: base64Audio
-                  }
-                },
-                {
-                  text:
-                    currentMode === "girl"
-                      ? "請聽這段語音並用可愛女生的語氣直接回覆我，絕對不要超過20個字！"
-                      : "請聽這段語音並以專家身分詳細、嚴謹地回覆我，控制在1000個字以內。"
-                }
-              ]
-            }
-          ],
+          contents,
           generationConfig: {
-            temperature: currentMode === "girl" ? 0.85 : 0.4
+            temperature: currentMode === "girl" ? 0.85 : 0.4,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                transcript: { type: "STRING" },
+                reply: { type: "STRING" }
+              },
+              required: ["transcript", "reply"]
+            }
           }
         };
 
@@ -800,24 +1141,46 @@
           throw new Error(data?.error?.message || `HTTP Error ${response.status}`);
         }
 
-        let replyText =
+        const rawText =
           data?.candidates?.[0]?.content?.parts
             ?.map((p) => p.text || "")
             .join("")
-            .trim() || "（未收到文字回覆）";
+            .trim() || "";
+        let parsed;
+        try {
+          parsed = parseVoicePayload(rawText);
+        } catch (parseError) {
+          parsed = { transcript: "", reply: rawText };
+        }
+        let replyText = parsed.reply || "（未收到文字回覆）";
 
-        // 雙重保險：確保字數絕對符合規範
         if (currentMode === "girl" && [...replyText].length > 20) {
           replyText = [...replyText].slice(0, 19).join("") + "～";
         } else if (currentMode === "expert" && [...replyText].length > 1000) {
           replyText = [...replyText].slice(0, 997).join("") + "...";
         }
 
-        appendMessage("ai", replyText, activeConfig.name);
+        const spoken = parsed.transcript || "（沒有聽清楚這段話）";
+        const textEl = userBubble.querySelector(".msg-text");
+        if (textEl) textEl.textContent = spoken;
+        if (parsed.transcript) {
+          const now = new Date();
+          saveChatMessage({
+            role: "user",
+            text: parsed.transcript,
+            sender: "",
+            mode: currentMode,
+            time: formatClock(now),
+            date: formatDateKey(now)
+          });
+        }
+
+        appendMessage("ai", replyText, activeConfig.name, { persist: true });
         updateStatus("idle", "共鳴完成 · 點擊下方按鈕繼續對話");
       } catch (error) {
         console.error("Gemini API 調用錯誤：", error);
-        appendMessage("ai", `⚠️ 終端連線異常：${error.message}`, "系統警告");
+        if (userBubble) userBubble.remove();
+        appendMessage("ai", `⚠️ 終端連線異常：${error.message}`, "系統警告", { persist: false });
         updateStatus("idle", "請求失敗 · 請檢查 API Key 或網路連線");
       } finally {
         recordBtn.disabled = false;
@@ -827,9 +1190,20 @@
     // ============================================================================
     // 畫面輔助函式
     // ============================================================================
-    function appendMessage(type, text, senderName = "") {
+    function appendMessage(type, text, senderName = "", options = {}) {
       const msgDiv = document.createElement("div");
-      msgDiv.className = `message ${type === "user" ? "user-message" : "ai-message"}`;
+      msgDiv.className = `message stored ${type === "user" ? "user-message" : "ai-message"}`;
+      if (options.persist) {
+        const now = new Date();
+        saveChatMessage({
+          role: type === "user" ? "user" : "model",
+          text,
+          sender: senderName,
+          mode: currentMode,
+          time: formatClock(now),
+          date: formatDateKey(now)
+        });
+      }
 
       if (type === "ai") {
         const senderDiv = document.createElement("div");
@@ -845,6 +1219,7 @@
 
       chatViewport.appendChild(msgDiv);
       chatViewport.scrollTop = chatViewport.scrollHeight;
+      return msgDiv;
     }
 
     function updateStatus(state, message) {
@@ -852,6 +1227,98 @@
       if (state === "recording") statusDot.classList.add("recording");
       if (state === "thinking") statusDot.classList.add("thinking");
       statusText.textContent = message;
+    }
+
+    async function requestGeminiText(apiKey, systemPrompt, userText) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userText }] }],
+          generationConfig: { temperature: 0.5 }
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error?.message || `HTTP Error ${response.status}`);
+      }
+      return data?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim() || "（未收到文字回覆）";
+    }
+
+    function conversationTranscript(dateKey) {
+      return getDayMessages(dateKey)
+        .map((msg) => {
+          const who = msg.role === "user" ? "使用者" : (msg.sender || "AI");
+          return `${msg.time || ""} ${who}：${msg.text}`;
+        })
+        .join("\n");
+    }
+
+    async function generateDiary(dateKey, { manual = false } = {}) {
+      if (diaryGenerating) return;
+      const messages = getDayMessages(dateKey);
+      if (messages.length === 0) {
+        const notice = "這一天還沒有對話，無法整理日記。";
+        if (manual) diaryStatus.textContent = notice;
+        return;
+      }
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        const notice = "請先在左上方填入 Gemini API Key。";
+        if (manual) {
+          diaryStatus.textContent = notice;
+          apiKeyInput.focus();
+        }
+        return;
+      }
+
+      diaryGenerating = true;
+      diaryBtn.disabled = true;
+      diaryStatus.textContent = "正在整理日記…";
+      try {
+        const text = await requestGeminiText(
+          apiKey,
+          DIARY_PROMPT,
+          `日期：${dateKey}\n\n${conversationTranscript(dateKey)}`
+        );
+        const diaries = getDiaries();
+        diaries[dateKey] = { text, createdAt: new Date().toISOString() };
+        writeJson(DIARY_STORAGE_KEY, diaries);
+        diaryStatus.textContent = "日記已儲存";
+        if (currentView === "diary") renderDiary();
+      } catch (error) {
+        diaryStatus.textContent = `整理失敗：${error.message}`;
+      } finally {
+        diaryGenerating = false;
+        diaryBtn.disabled = false;
+        if (currentView === "diary") renderDiary();
+      }
+    }
+
+    function msUntilNextDiaryTime() {
+      const now = new Date();
+      const target = new Date(now);
+      target.setHours(23, 59, 0, 0);
+      if (now >= target) target.setDate(target.getDate() + 1);
+      return target.getTime() - now.getTime();
+    }
+
+    function scheduleDiaryTick() {
+      setTimeout(() => {
+        generateDiary(formatDateKey(new Date())).finally(scheduleDiaryTick);
+      }, msUntilNextDiaryTime());
+    }
+
+    function maybeCatchUpDiary() {
+      const now = new Date();
+      const passed = now.getHours() > 23 || (now.getHours() === 23 && now.getMinutes() >= 59);
+      if (!passed) return;
+      const today = formatDateKey(now);
+      const hasChat = getDayMessages(today).length > 0;
+      const hasDiary = Boolean(getDiaries()[today]?.text);
+      if (hasChat && !hasDiary) generateDiary(today);
     }
 
     init();
