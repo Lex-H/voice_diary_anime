@@ -454,8 +454,8 @@
       </div>
 
       <div class="mode-switcher" id="modeSwitcher">
-        <button class="mode-btn active" data-mode="girl">🌸 妹子模式 (≤20字)</button>
-        <button class="mode-btn" data-mode="expert">💠 專家模式 (≤1000字)</button>
+        <button class="mode-btn active" data-mode="girl">🌸 星瞳</button>
+        <button class="mode-btn" data-mode="expert">💠 智庫終端</button>
       </div>
     </header>
 
@@ -466,15 +466,16 @@
         <div class="avatar-frame">
           <img id="avatarImg" src="" alt="角色頭像" />
         </div>
-        <div class="mode-badge" id="modeBadge">CUTE RESONATOR</div>
+        <div class="mode-badge" id="modeBadge">Listener</div>
       </div>
 
       <div class="character-info">
-        <h1 id="charName">星瞳 · 看板娘</h1>
+        <h1 id="charName">星瞳</h1>
         <div class="status-bar">
           <span class="status-dot" id="statusDot"></span>
-          <span id="statusText">終端待命中 · 點擊下方按鈕開始語音共鳴</span>
+          <span id="statusText">永遠樂於傾聽你的心事</span>
         </div>
+        
       </div>
     </section>
 
@@ -482,7 +483,7 @@
     <section class="chat-viewport" id="chatViewport">
       <div class="message ai-message">
         <div class="msg-sender">✦ 系統提示</div>
-        <div class="msg-text">旅行者 / 漂泊者你好！請先在左上方填入 Gemini API Key，然後點擊下方麥克風按鈕對我說話吧～</div>
+        <div class="msg-text">嗨！請先在左上方填入 Gemini API Key，然後點擊下方麥克風按鈕對我說話吧～</div>
       </div>
     </section>
 
@@ -522,7 +523,7 @@
      */
 
     // 妹子模式頭像（與本頁同目錄的 cute_girl.jpg）
-    const CUTE_GIRL_AVATAR = "./cute_girl.jpg";
+    const CUTE_GIRL_AVATAR = "./cute_girl.png";
 
     // 預設內建：鳴潮輕科幻風「全息智械專家核心」頭像 (想換圖直接改成 "./你的專家圖.png")
     const EXPERT_AVATAR = `data:image/svg+xml;utf8,${encodeURIComponent(`
@@ -552,14 +553,14 @@
     // ============================================================================
     const MODES = {
       girl: {
-        name: "星瞳 · 看板娘",
-        badge: "CUTE RESONATOR",
+        name: "星瞳",
+        badge: "Listener",
         avatar: CUTE_GIRL_AVATAR,
         systemPrompt:
           "你是一個活潑、軟萌、元氣滿滿的二次元美少女（風格參考原神與鳴潮的角色語氣）。請直接聽取使用者的語音，並用可愛的中文直接回答使用者，不要複述使用者的原話。嚴格死命令：每次回覆的總字數（含標點符號）絕對不能超過20個字！必須簡短俏皮！"
       },
       expert: {
-        name: "瑝瓏 · 智庫終端",
+        name: "智庫終端",
         badge: "TACTICAL ARCHIVE",
         avatar: EXPERT_AVATAR,
         systemPrompt:
