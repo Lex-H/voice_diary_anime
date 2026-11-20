@@ -25,7 +25,10 @@ function allowedOrigins() {
 }
 
 function allowedModels() {
-  const raw = String(process.env.ALLOWED_MODELS || "gemini-3.8-flash,gemini-3.5-flash-lite");
+  const raw = String(
+    process.env.ALLOWED_MODELS ||
+      "gemini-3.8-flash,gemini-3.8-flash-lite,gemini-3.5-flash-lite"
+  );
   return raw.split(",").map((item) => item.trim()).filter(Boolean);
 }
 
