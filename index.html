@@ -155,9 +155,11 @@
     }
 
     .top-actions {
+      width: 100%;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
+      justify-content: space-between;
       gap: 10px;
     }
 
@@ -491,7 +493,19 @@
       letter-spacing: 1px;
       color: var(--text-main);
       text-shadow: 0 0 12px rgba(227, 193, 120, 0.35);
+    }
+
+    .character-heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
       margin-bottom: 8px;
+    }
+
+    .character-heading .mode-btn {
+      padding: 6px 10px;
+      font-size: 12px;
     }
 
     .status-bar {
@@ -652,6 +666,29 @@
       display: none !important;
     }
 
+    body[data-phase="idle"] .record-btn {
+      animation: micInvite 2.8s ease-in-out infinite;
+    }
+
+    body[data-phase="idle"] .record-btn .pulse-ring {
+      border-color: var(--gold-accent);
+      animation: micHalo 2.8s ease-out infinite;
+    }
+
+    body[data-phase="idle"] .record-btn .pulse-ring.delay {
+      animation-delay: 1.4s;
+    }
+
+    @keyframes micInvite {
+      0%, 100% { box-shadow: 0 0 16px rgba(227, 193, 120, 0.22); }
+      50% { box-shadow: 0 0 30px rgba(227, 193, 120, 0.58); }
+    }
+
+    @keyframes micHalo {
+      0% { transform: scale(1); opacity: 0.4; }
+      100% { transform: scale(1.5); opacity: 0; }
+    }
+
     /* 錄音進行中的聲波擴散光效 */
     .record-btn.recording {
       border-color: #ff3b5c;
@@ -804,16 +841,36 @@
       pointer-events: none;
     }
 
+    body.expert-theme[data-phase="speaking"] .avatar-frame,
+    body.expert-theme .stage-portrait {
+      box-shadow: 0 0 32px rgba(59, 240, 228, 0.45);
+    }
+
+    body.expert-theme .stage-name {
+      text-shadow: 0 0 16px rgba(59, 240, 228, 0.45);
+    }
+
+    body.expert-theme .status-dot.speaking {
+      background: var(--cyan-glow);
+      box-shadow: 0 0 12px var(--cyan-glow);
+    }
+
     .stage-reply {
-      max-width: 16em;
+      max-width: min(92vw, 34em);
+      max-height: 42vh;
+      overflow: auto;
+      overscroll-behavior: contain;
       text-align: center;
       font-size: 22px;
       line-height: 1.65;
       color: var(--text-main);
+      white-space: pre-wrap;
       pointer-events: auto;
     }
 
     @media (prefers-reduced-motion: reduce) {
+      .record-btn,
+      .pulse-ring,
       .avatar-wrapper,
       .avatar-frame,
       .orbit-ring,
@@ -863,10 +920,6 @@
           <button class="mode-btn active" data-view="chat">對話</button>
           <button class="mode-btn" data-view="diary">日記</button>
         </div>
-        <div class="mode-switcher" id="modeSwitcher">
-          <button class="mode-btn active" data-mode="girl">🌸 星瞳</button>
-          <button class="mode-btn" data-mode="expert">💠 智庫終端</button>
-        </div>
       </div>
     </header>
 
@@ -882,7 +935,13 @@
       </div>
 
       <div class="character-info">
-        <h1 id="charName">星瞳</h1>
+        <div class="character-heading">
+          <h1 id="charName">星瞳</h1>
+          <div class="mode-switcher" id="modeSwitcher">
+            <button class="mode-btn active" data-mode="girl">🌸 星瞳</button>
+            <button class="mode-btn" data-mode="expert">💠 智庫終端</button>
+          </div>
+        </div>
         <div class="status-bar">
           <span class="status-dot" id="statusDot"></span>
           <span id="statusText">永遠樂於傾聽你的心事</span>
@@ -893,8 +952,8 @@
 
     <!-- 劇情/終端對話歷史記錄區 -->
     <section class="chat-viewport" id="chatViewport">
-      <div class="message ai-message">
-        <div class="msg-sender">✦ 系統提示</div>
+      <div class="message ai-message" id="welcomeMessage">
+        <div class="msg-sender" id="welcomeSender">✦ 星瞳</div>
         <div class="msg-text" id="welcomeMsgText"></div>
       </div>
     </section>
@@ -1078,6 +1137,8 @@
     let sfxMuted = false;
     const modelLabel = document.getElementById("modelLabel");
     const welcomeMsgText = document.getElementById("welcomeMsgText");
+    const welcomeSender = document.getElementById("welcomeSender");
+    let openingTicket = 0;
     const viewBtns = document.querySelectorAll("#viewSwitcher .mode-btn");
     const dateStrip = document.getElementById("dateStrip");
     const diaryBody = document.getElementById("diaryBody");
@@ -1211,12 +1272,72 @@
       const cfg = MODES[currentMode];
       charName.textContent = cfg.name;
       modeBadge.textContent = cfg.badge;
-      if (welcomeMsgText) {
-        welcomeMsgText.textContent = cfg.welcomeMessage;
-      }
       const busy = phase !== "idle" || micRequesting;
       if (!preserveStatus && !busy) {
         statusText.textContent = cfg.statusTagline;
+      }
+      refreshOpening();
+    }
+
+    function openingContext() {
+      const diaries = getDiaries();
+      const chats = getChats();
+      const diaryBlocks = [];
+      const chatBlocks = [];
+      for (let ago = 29; ago >= 0; ago -= 1) {
+        const key = shiftDateKey(ago);
+        const diary = String(diaries[key]?.text || "").trim();
+        if (diary) diaryBlocks.push(`${key}\n${clipChars(diary, 400)}`);
+        const messages = Array.isArray(chats[key]) ? chats[key] : [];
+        if (messages.length) {
+          const lines = messages.slice(-6).map((msg) => {
+            const who = msg.role === "user" ? "使用者" : (msg.sender || "星瞳");
+            return `${who}：${clipChars(String(msg.text || ""), 80)}`;
+          });
+          chatBlocks.push(`${key}\n${lines.join("\n")}`);
+        }
+      }
+      if (!diaryBlocks.length && !chatBlocks.length) {
+        const diaryKeys = Object.keys(diaries).filter((key) => String(diaries[key]?.text || "").trim()).sort();
+        const chatKeys = Object.keys(chats).filter((key) => Array.isArray(chats[key]) && chats[key].length).sort();
+        const lastDiary = diaryKeys[diaryKeys.length - 1];
+        const lastChat = chatKeys[chatKeys.length - 1];
+        if (lastDiary) diaryBlocks.push(`${lastDiary}\n${clipChars(String(diaries[lastDiary].text).trim(), 400)}`);
+        if (lastChat) {
+          const lines = chats[lastChat].slice(-6).map((msg) => {
+            const who = msg.role === "user" ? "使用者" : (msg.sender || "星瞳");
+            return `${who}：${clipChars(String(msg.text || ""), 80)}`;
+          });
+          chatBlocks.push(`${lastChat}\n${lines.join("\n")}`);
+        }
+      }
+      while (diaryBlocks.join("\n").length + chatBlocks.join("\n").length > 8000 && diaryBlocks.length + chatBlocks.length > 1) {
+        if (diaryBlocks.length >= chatBlocks.length) diaryBlocks.shift();
+        else chatBlocks.shift();
+      }
+      if (!diaryBlocks.length && !chatBlocks.length) return "";
+      return `日記：\n${diaryBlocks.join("\n\n") || "（沒有）"}\n\n對話：\n${chatBlocks.join("\n\n") || "（沒有）"}`;
+    }
+
+    async function refreshOpening() {
+      const ticket = ++openingTicket;
+      const cfg = MODES[currentMode];
+      if (welcomeSender) welcomeSender.textContent = `✦ ${cfg.name}`;
+      if (welcomeMsgText) welcomeMsgText.textContent = cfg.welcomeMessage;
+      if (currentMode !== "girl") return;
+      const context = openingContext();
+      if (!context) return;
+      try {
+        const line = await requestGeminiText(
+          `${cfg.systemPrompt}\n現在只寫一句開場白，勾引使用者願意傾訴心事與生活。不要複述原文，不要超過20個字，不要引號，不要標題。`,
+          context
+        );
+        if (ticket !== openingTicket || currentMode !== "girl" || !welcomeMsgText) return;
+        const clean = String(line || "").replace(/^[\s"'「『]+|[\s"'」』]+$/g, "").trim();
+        if (!clean) return;
+        welcomeMsgText.textContent = [...clean].length > 20 ? `${[...clean].slice(0, 19).join("")}～` : clean;
+      } catch (error) {
+        console.error("開場白產生失敗：", error);
       }
     }
 
@@ -1636,12 +1757,8 @@
         }
 
         appendMessage("ai", replyText, activeConfig.name, { persist: true });
-        if (currentMode === "girl") {
-          stageLine = replyText;
-          setPhase("speaking");
-        } else {
-          setPhase("idle", "共鳴完成 · 點擊下方按鈕繼續對話");
-        }
+        stageLine = replyText;
+        setPhase("speaking");
       } catch (error) {
         console.error("Gemini API 調用錯誤：", error);
         if (userBubble) userBubble.remove();
@@ -1836,7 +1953,7 @@
     }
 
     function syncStage() {
-      const show = phase === "speaking" && currentMode === "girl";
+      const show = phase === "speaking";
       document.body.classList.toggle("stage-on", show);
       replyStage.setAttribute("aria-hidden", show ? "false" : "true");
       if (!show) return;
