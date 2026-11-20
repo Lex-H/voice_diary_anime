@@ -304,7 +304,39 @@
       border: 1.5px dashed var(--theme-active);
       opacity: 0.75;
       animation: spinSlow 18s linear infinite;
-      transition: border-color 0.4s ease;
+      transition: border-color 0.4s ease, opacity 0.4s ease;
+    }
+
+    body[data-phase="idle"] .avatar-wrapper {
+      animation: avatarFloat 3.8s ease-in-out infinite;
+    }
+
+    body[data-phase="listening"] .avatar-frame {
+      animation: avatarListen 1.5s ease-in-out infinite;
+    }
+
+    body[data-phase="thinking"] .orbit-ring {
+      animation-duration: 4.2s;
+      opacity: 1;
+    }
+
+    body[data-phase="thinking"] .avatar-frame {
+      box-shadow: 0 0 18px rgba(59, 240, 228, 0.35);
+    }
+
+    body[data-phase="speaking"] .avatar-frame {
+      transform: scale(1.05);
+      box-shadow: 0 0 28px rgba(255, 133, 179, 0.55);
+    }
+
+    @keyframes avatarFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    @keyframes avatarListen {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 16px rgba(255, 59, 92, 0.22); }
+      50% { transform: scale(1.045); box-shadow: 0 0 28px rgba(255, 59, 92, 0.5); }
     }
 
     @keyframes spinSlow {
@@ -372,6 +404,7 @@
       transition: all 0.3s ease;
     }
 
+    .status-dot.listening,
     .status-dot.recording {
       background: #ff3b5c;
       box-shadow: 0 0 12px #ff3b5c;
@@ -381,6 +414,12 @@
     .status-dot.thinking {
       background: var(--cyan-glow);
       box-shadow: 0 0 12px var(--cyan-glow);
+    }
+
+    .status-dot.speaking {
+      background: var(--pink-cute);
+      box-shadow: 0 0 12px var(--pink-cute);
+      animation: blink 1.1s infinite alternate;
     }
 
     @keyframes blink {
@@ -542,6 +581,142 @@
       letter-spacing: 1px;
     }
 
+    .mute-btn {
+      background: rgba(8, 11, 20, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+
+    .mute-btn[aria-pressed="true"] {
+      color: var(--text-sub);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .reply-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding:
+        max(16px, env(safe-area-inset-top))
+        max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.45s ease, visibility 0s linear 0.45s;
+    }
+
+    body.stage-on .reply-stage {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: opacity 0.45s ease, visibility 0s linear 0s;
+    }
+
+    .stage-backdrop {
+      position: absolute;
+      inset: 0;
+      border: 0;
+      background: rgba(3, 5, 12, 0.9);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      cursor: pointer;
+    }
+
+    .stage-close {
+      position: absolute;
+      top: max(16px, env(safe-area-inset-top));
+      right: max(16px, env(safe-area-inset-right));
+      z-index: 2;
+      background: rgba(8, 11, 20, 0.8);
+      border: 1px solid rgba(227, 193, 120, 0.45);
+      color: var(--gold-accent);
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+
+    .stage-card {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 420px);
+      max-height: 100%;
+      overflow: auto;
+      overscroll-behavior: contain;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+    }
+
+    .stage-portrait {
+      width: min(58vw, 240px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 2.5px solid var(--gold-accent);
+      box-shadow: 0 0 36px rgba(255, 133, 179, 0.38);
+      overflow: hidden;
+      background: #141a29;
+      transform: scale(0.88);
+      opacity: 0.7;
+      transition: transform 0.55s ease, opacity 0.55s ease;
+      pointer-events: auto;
+    }
+
+    body.stage-on .stage-portrait {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    .stage-portrait img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .stage-name {
+      font-size: 28px;
+      letter-spacing: 2px;
+      color: var(--text-main);
+      text-shadow: 0 0 16px rgba(255, 133, 179, 0.45);
+      pointer-events: none;
+    }
+
+    .stage-reply {
+      max-width: 16em;
+      text-align: center;
+      font-size: 22px;
+      line-height: 1.65;
+      color: var(--text-main);
+      pointer-events: auto;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .avatar-wrapper,
+      .avatar-frame,
+      .orbit-ring,
+      .reply-stage,
+      .stage-portrait {
+        animation: none;
+        transition: none;
+      }
+    }
+
     @media (max-width: 760px) {
       body {
         padding: 0;
@@ -576,6 +751,7 @@
     <!-- 頂部欄：模式切換 -->
     <header class="top-bar">
       <div class="top-actions">
+        <button type="button" class="mute-btn" id="muteBtn" aria-pressed="false" aria-label="關閉音效">音效開</button>
         <div class="mode-switcher" id="viewSwitcher">
           <button class="mode-btn active" data-view="chat">對話</button>
           <button class="mode-btn" data-view="diary">日記</button>
@@ -649,6 +825,19 @@
     </div>
   </main>
 
+  <div class="reply-stage" id="replyStage" aria-hidden="true">
+    <button type="button" class="stage-backdrop" id="stageBackdrop" aria-label="結束回應"></button>
+    <button type="button" class="stage-close" id="stageClose">關閉</button>
+    <div class="stage-card">
+      <!-- 主視覺槽：現在是放大頭像，之後可換成半身或全身圖 -->
+      <div class="stage-portrait" id="stagePortrait" data-visual="avatar">
+        <img id="stageImg" alt="" />
+      </div>
+      <h2 class="stage-name" id="stageName">星瞳</h2>
+      <p class="stage-reply" id="stageReply"></p>
+    </div>
+  </div>
+
   <script>
     /**
      * ============================================================================
@@ -689,6 +878,7 @@
     const GEMINI_PROXY_URL = "https://gemini-proxy-198574322039.asia-east1.run.app";
     const CHAT_STORAGE_KEY = "voice_diary_chats";
     const DIARY_STORAGE_KEY = "voice_diary_entries";
+    const SFX_MUTE_KEY = "voice_diary_sfx_muted";
     const DIARY_PROMPT =
       "你是語音日記的整理者。下面是使用者這一天與 AI 的對話紀錄。請用繁體中文寫一篇日記：先總結今天實際出現過的內容，再給出具體、溫和的建議。不要捏造紀錄裡沒有的事實。";
 
@@ -726,8 +916,15 @@
     let currentMode = "girl";
     let currentView = "chat";
     let selectedDiaryDate = "";
-    let isRecording = false;
+    let phase = "idle";
+    let micRequesting = false;
     let diaryGenerating = false;
+    const PHASE_NEXT = {
+      idle: ["listening"],
+      listening: ["thinking", "idle"],
+      thinking: ["speaking", "idle"],
+      speaking: ["idle"]
+    };
     let mediaRecorder = null;
     let audioChunks = [];
 
@@ -742,6 +939,18 @@
     const micIcon = document.getElementById("micIcon");
     const stopIcon = document.getElementById("stopIcon");
     const recordHint = document.getElementById("recordHint");
+    const muteBtn = document.getElementById("muteBtn");
+    const replyStage = document.getElementById("replyStage");
+    const stageImg = document.getElementById("stageImg");
+    const stageName = document.getElementById("stageName");
+    const stageReply = document.getElementById("stageReply");
+    const stageClose = document.getElementById("stageClose");
+    const stageBackdrop = document.getElementById("stageBackdrop");
+    let stageLine = "";
+    let audioCtx = null;
+    let masterGain = null;
+    let bedTimer = null;
+    let sfxMuted = false;
     const modelLabel = document.getElementById("modelLabel");
     const welcomeMsgText = document.getElementById("welcomeMsgText");
     const viewBtns = document.querySelectorAll("#viewSwitcher .mode-btn");
@@ -833,7 +1042,7 @@
       if (welcomeMsgText) {
         welcomeMsgText.textContent = cfg.welcomeMessage;
       }
-      const busy = isRecording || recordBtn.disabled;
+      const busy = phase !== "idle" || micRequesting;
       if (!preserveStatus && !busy) {
         statusText.textContent = cfg.statusTagline;
       }
@@ -903,6 +1112,9 @@
       applyModeCharacterUI();
       renderTodayChat();
       showView("chat");
+      setPhase("idle");
+      sfxMuted = localStorage.getItem(SFX_MUTE_KEY) === "1";
+      paintMuteButton();
 
       scheduleDiaryTick();
       maybeCatchUpDiary();
@@ -914,7 +1126,7 @@
     modeBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
         const selected = btn.dataset.mode;
-        if (selected === currentMode) return;
+        if (selected === currentMode || phase !== "idle") return;
 
         currentMode = selected;
         modeBtns.forEach((b) => b.classList.remove("active"));
@@ -935,12 +1147,32 @@
     // 錄音按鈕：按一下開始錄音，再按一下結束並發送給 Gemini 3.8
     // ============================================================================
     recordBtn.addEventListener("click", async () => {
-      if (!isRecording) {
-        await startRecording();
-      } else {
+      if (phase === "listening") {
         stopRecording();
+        return;
       }
+      if (phase !== "idle") return;
+      unlockAudio();
+      playWake();
+      await startRecording();
     });
+
+    muteBtn.addEventListener("click", () => {
+      unlockAudio();
+      if (!sfxMuted) playTap();
+      setSfxMuted(!sfxMuted);
+      if (!sfxMuted) playTap();
+    });
+
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button || button.disabled) return;
+      if (button.id === "muteBtn") return;
+      if (button.id === "recordBtn" && phase === "idle") return;
+      if (button.closest("#replyStage")) return;
+      unlockAudio();
+      playTap();
+    }, true);
 
     function getSupportedMimeType() {
       const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
@@ -951,8 +1183,12 @@
     }
 
     async function startRecording() {
+      if (phase !== "idle" || micRequesting) return;
+      micRequesting = true;
+      recordBtn.disabled = true;
+      let stream = null;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const mimeType = getSupportedMimeType();
         mediaRecorder = mimeType
           ? new MediaRecorder(stream, { mimeType })
@@ -973,39 +1209,33 @@
           const audioBlob = new Blob(audioChunks, { type: finalMime });
 
           if (audioBlob.size < 500) {
-            updateStatus("idle", "錄音時間太短啦，請再試一次～");
+            setPhase("idle", "錄音時間太短啦，請再試一次～");
             return;
           }
 
+          if (!setPhase("thinking")) return;
           const priorMessages = getDayMessages(formatDateKey(new Date()));
           const userBubble = appendMessage("user", "正在把你的話轉成文字…", "", { persist: false });
           await sendAudioToGemini(audioBlob, finalMime, priorMessages, userBubble);
         };
 
         mediaRecorder.start();
-        isRecording = true;
-
-        recordBtn.classList.add("recording");
-        micIcon.classList.add("hidden");
-        stopIcon.classList.remove("hidden");
-        recordHint.textContent = "正在傾聽... 再按一下結束並發送";
-        updateStatus("recording", "聲痕收音中 · 請開始說話...");
+        setPhase("listening");
       } catch (err) {
+        if (stream) stream.getTracks().forEach((track) => track.stop());
         console.error("麥克風調用失敗：", err);
+        setPhase("idle");
         alert("無法存取麥克風！請在瀏覽器彈窗點擊「允許」麥克風權限（建議使用 Chrome 或 Edge 開啟）。");
+      } finally {
+        micRequesting = false;
       }
     }
 
     function stopRecording() {
+      if (phase !== "listening") return;
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
         mediaRecorder.stop();
       }
-      isRecording = false;
-
-      recordBtn.classList.remove("recording");
-      micIcon.classList.remove("hidden");
-      stopIcon.classList.add("hidden");
-      recordHint.textContent = "點擊開始錄音";
     }
 
     // ============================================================================
@@ -1051,9 +1281,6 @@
 
     async function sendAudioToGemini(audioBlob, mimeType, priorMessages, userBubble) {
       const activeConfig = MODES[currentMode];
-
-      updateStatus("thinking", `${activeConfig.name} 正在解析語音共鳴...`);
-      recordBtn.disabled = true;
 
       try {
         const base64Audio = await blobToBase64(audioBlob);
@@ -1149,14 +1376,17 @@
         }
 
         appendMessage("ai", replyText, activeConfig.name, { persist: true });
-        updateStatus("idle", "共鳴完成 · 點擊下方按鈕繼續對話");
+        if (currentMode === "girl") {
+          stageLine = replyText;
+          setPhase("speaking");
+        } else {
+          setPhase("idle", "共鳴完成 · 點擊下方按鈕繼續對話");
+        }
       } catch (error) {
         console.error("Gemini API 調用錯誤：", error);
         if (userBubble) userBubble.remove();
         appendMessage("ai", `⚠️ 終端連線異常：${error.message}`, "系統警告", { persist: false });
-        updateStatus("idle", "請求失敗 · 請檢查網路連線");
-      } finally {
-        recordBtn.disabled = false;
+        setPhase("idle", "請求失敗 · 請檢查網路連線");
       }
     }
 
@@ -1195,12 +1425,176 @@
       return msgDiv;
     }
 
-    function updateStatus(state, message) {
-      statusDot.className = "status-dot";
-      if (state === "recording") statusDot.classList.add("recording");
-      if (state === "thinking") statusDot.classList.add("thinking");
-      statusText.textContent = message;
+    function paintMuteButton() {
+      muteBtn.setAttribute("aria-pressed", sfxMuted ? "true" : "false");
+      muteBtn.setAttribute("aria-label", sfxMuted ? "開啟音效" : "關閉音效");
+      muteBtn.textContent = sfxMuted ? "音效關" : "音效開";
     }
+
+    function unlockAudio() {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!audioCtx) {
+        audioCtx = new AudioCtx();
+        const soften = audioCtx.createBiquadFilter();
+        soften.type = "lowpass";
+        soften.frequency.value = 2800;
+        soften.Q.value = 0.5;
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = sfxMuted ? 0 : 0.2;
+        masterGain.connect(soften);
+        soften.connect(audioCtx.destination);
+      }
+      if (audioCtx.state !== "running") audioCtx.resume();
+    }
+
+    function tone(start, freq, dur, gain, slideTo, type) {
+      const osc = audioCtx.createOscillator();
+      const amp = audioCtx.createGain();
+      osc.type = type || "sine";
+      osc.frequency.setValueAtTime(freq, start);
+      if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, start + dur);
+      amp.gain.setValueAtTime(0.0001, start);
+      amp.gain.exponentialRampToValueAtTime(gain, start + 0.018);
+      amp.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(amp);
+      amp.connect(masterGain);
+      osc.start(start);
+      osc.stop(start + dur + 0.03);
+    }
+
+    function playCue(notes) {
+      if (!audioCtx || sfxMuted) return;
+      try {
+        const now = audioCtx.currentTime;
+        notes.forEach((note) => {
+          tone(now + note.at, note.freq, note.dur, note.gain, note.to, note.type);
+        });
+      } catch (err) {
+        console.error("音效播放失敗：", err);
+      }
+    }
+
+    function playTap() {
+      playCue([
+        { at: 0, freq: 1046, to: 1568, dur: 0.06, gain: 0.028 }
+      ]);
+    }
+
+    function playWake() {
+      playCue([
+        { at: 0, freq: 523, to: 880, dur: 0.16, gain: 0.05 },
+        { at: 0.045, freq: 1318, to: 1760, dur: 0.11, gain: 0.025 }
+      ]);
+    }
+
+    function playBloom() {
+      playCue([
+        { at: 0, freq: 392, to: 659, dur: 0.2, gain: 0.045 },
+        { at: 0.07, freq: 659, to: 1046, dur: 0.22, gain: 0.03 }
+      ]);
+    }
+
+    function playFold() {
+      playCue([
+        { at: 0, freq: 784, to: 349, dur: 0.24, gain: 0.04 }
+      ]);
+    }
+
+    function stopBed() {
+      if (bedTimer) {
+        clearInterval(bedTimer);
+        bedTimer = null;
+      }
+    }
+
+    function startBed(kind) {
+      stopBed();
+      if (!audioCtx || sfxMuted) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const pulse = () => {
+        if (!audioCtx || sfxMuted || phase !== kind) return;
+        const now = audioCtx.currentTime;
+        if (kind === "listening") tone(now, 784, 0.09, 0.016, 988, "sine");
+        else tone(now, 330, 0.18, 0.014, 392, "triangle");
+      };
+      pulse();
+      bedTimer = setInterval(pulse, kind === "listening" ? 950 : 1450);
+    }
+
+    function syncSfx(prev, next) {
+      if (prev === next) return;
+      stopBed();
+      if (!audioCtx || sfxMuted) return;
+      if (next === "listening") startBed("listening");
+      else if (next === "thinking") startBed("thinking");
+      else if (next === "speaking") playBloom();
+      else if (prev === "speaking" && next === "idle") playFold();
+    }
+
+    function setSfxMuted(muted) {
+      sfxMuted = muted;
+      localStorage.setItem(SFX_MUTE_KEY, muted ? "1" : "0");
+      paintMuteButton();
+      if (masterGain && audioCtx) {
+        masterGain.gain.setTargetAtTime(muted ? 0 : 0.2, audioCtx.currentTime, 0.02);
+      }
+      if (muted) stopBed();
+      else if (phase === "listening" || phase === "thinking") startBed(phase);
+    }
+
+    function setPhase(next, message) {
+      if (next !== phase && !(PHASE_NEXT[phase] || []).includes(next)) return false;
+      const prev = phase;
+      phase = next;
+      document.body.dataset.phase = phase;
+      syncSfx(prev, next);
+
+      const cfg = MODES[currentMode];
+      const statusCopy = {
+        idle: cfg.statusTagline,
+        listening: "聲痕收音中 · 請開始說話...",
+        thinking: `${cfg.name} 正在解析語音共鳴...`,
+        speaking: `${cfg.name} 正在回應...`
+      };
+      const hintCopy = {
+        idle: "點擊開始錄音",
+        listening: "正在傾聽... 再按一下結束並發送",
+        thinking: "解析中，請稍候",
+        speaking: "點一下舞台即可收合"
+      };
+      statusDot.className = "status-dot";
+      if (phase !== "idle") statusDot.classList.add(phase);
+      statusText.textContent = message || statusCopy[phase];
+      recordHint.textContent = hintCopy[phase];
+      recordBtn.classList.toggle("recording", phase === "listening");
+      recordBtn.disabled = phase === "thinking" || phase === "speaking";
+      micIcon.classList.toggle("hidden", phase === "listening");
+      stopIcon.classList.toggle("hidden", phase !== "listening");
+      syncStage();
+      return true;
+    }
+
+    function syncStage() {
+      const show = phase === "speaking" && currentMode === "girl";
+      document.body.classList.toggle("stage-on", show);
+      replyStage.setAttribute("aria-hidden", show ? "false" : "true");
+      if (!show) return;
+      stageImg.src = avatarImg.src;
+      stageImg.alt = MODES[currentMode].name;
+      stageName.textContent = MODES[currentMode].name;
+      stageReply.textContent = stageLine;
+    }
+
+    function endSpeaking() {
+      if (phase !== "speaking") return;
+      setPhase("idle", "共鳴完成 · 點擊下方按鈕繼續對話");
+    }
+
+    replyStage.addEventListener("click", endSpeaking);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") endSpeaking();
+    });
 
     async function requestGeminiText(systemPrompt, userText) {
       const endpoint = requireProxyUrl();
