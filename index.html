@@ -177,13 +177,57 @@
       display: none;
     }
 
+    .month-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      padding-top: 14px;
+    }
+
+    .month-label {
+      flex: 1;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .month-nav,
+    .month-today {
+      background: rgba(8, 11, 20, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .month-nav {
+      width: 36px;
+      height: 36px;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .month-today {
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+
+    .month-nav:disabled,
+    .month-today:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
     .date-strip {
       display: flex;
       gap: 8px;
       overflow-x: auto;
       overscroll-behavior: contain;
       flex-shrink: 0;
-      padding: 16px 2px 12px;
+      padding: 12px 2px;
     }
 
     .date-strip::-webkit-scrollbar {
@@ -238,6 +282,69 @@
 
     .diary-empty {
       color: var(--text-sub);
+    }
+
+    .diary-body.is-editable {
+      cursor: pointer;
+    }
+
+    .diary-editor {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding:
+        max(16px, env(safe-area-inset-top))
+        max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .diary-editor[aria-hidden="false"] {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .diary-editor-card {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 640px);
+      height: min(100%, 720px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(12, 16, 28, 0.96);
+      border: 1px solid rgba(227, 193, 120, 0.35);
+    }
+
+    .diary-editor-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .diary-editor textarea {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      resize: none;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(8, 11, 20, 0.8);
+      color: var(--text-main);
+      padding: 14px;
+      line-height: 1.7;
+      font-size: 15px;
     }
 
     .diary-actions {
@@ -816,6 +923,12 @@
     </div>
 
     <div class="view-panel" id="diaryView">
+      <div class="month-bar">
+        <button type="button" class="month-nav" id="monthPrev" aria-label="上個月">‹</button>
+        <div class="month-label" id="monthLabel"></div>
+        <button type="button" class="month-nav" id="monthNext" aria-label="下個月">›</button>
+        <button type="button" class="month-today" id="monthToday">今天</button>
+      </div>
       <div class="date-strip" id="dateStrip"></div>
       <div class="diary-body" id="diaryBody"></div>
       <div class="diary-actions">
@@ -824,6 +937,17 @@
       </div>
     </div>
   </main>
+
+  <div class="diary-editor" id="diaryEditor" aria-hidden="true">
+    <button type="button" class="stage-backdrop" id="diaryEditorBackdrop" aria-label="完成編輯"></button>
+    <div class="diary-editor-card">
+      <div class="diary-editor-bar">
+        <span id="diaryEditorDate"></span>
+        <button type="button" class="month-today" id="diaryEditorClose">完成</button>
+      </div>
+      <textarea id="diaryEditorInput" aria-label="日記內容"></textarea>
+    </div>
+  </div>
 
   <div class="reply-stage" id="replyStage" aria-hidden="true">
     <button type="button" class="stage-backdrop" id="stageBackdrop" aria-label="結束回應"></button>
@@ -916,6 +1040,7 @@
     let currentMode = "girl";
     let currentView = "chat";
     let selectedDiaryDate = "";
+    let diaryMonth = "";
     let phase = "idle";
     let micRequesting = false;
     let diaryGenerating = false;
@@ -958,6 +1083,15 @@
     const diaryBody = document.getElementById("diaryBody");
     const diaryBtn = document.getElementById("diaryBtn");
     const diaryStatus = document.getElementById("diaryStatus");
+    const monthLabel = document.getElementById("monthLabel");
+    const monthPrev = document.getElementById("monthPrev");
+    const monthNext = document.getElementById("monthNext");
+    const monthToday = document.getElementById("monthToday");
+    const diaryEditor = document.getElementById("diaryEditor");
+    const diaryEditorInput = document.getElementById("diaryEditorInput");
+    const diaryEditorDate = document.getElementById("diaryEditorDate");
+    const diaryEditorClose = document.getElementById("diaryEditorClose");
+    const diaryEditorBackdrop = document.getElementById("diaryEditorBackdrop");
 
     function formatDateKey(date) {
       const y = date.getFullYear();
@@ -1024,11 +1158,49 @@
       return dateKey.replace(/-/g, "/");
     }
 
-    function listDiaryDates() {
-      const keys = new Set([shiftDateKey(0), shiftDateKey(1), shiftDateKey(2)]);
-      Object.keys(getChats()).forEach((key) => keys.add(key));
-      Object.keys(getDiaries()).forEach((key) => keys.add(key));
-      return [...keys].filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)).sort().reverse();
+    function currentMonthKey() {
+      return shiftDateKey(0).slice(0, 7);
+    }
+
+    function shiftMonth(monthKey, delta) {
+      const [year, month] = monthKey.split("-").map(Number);
+      const date = new Date(year, month - 1 + delta, 1);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    function monthTitle(monthKey) {
+      const [year, month] = monthKey.split("-");
+      return `${year}年${Number(month)}月`;
+    }
+
+    function diaryDatesInMonth(monthKey) {
+      const diaries = getDiaries();
+      return Object.keys(diaries)
+        .filter((key) => key.startsWith(`${monthKey}-`) && String(diaries[key]?.text || "").trim())
+        .sort()
+        .reverse();
+    }
+
+    function clipChars(text, max) {
+      const chars = Array.from(text);
+      if (chars.length <= max) return text;
+      return `${chars.slice(0, max).join("")}…`;
+    }
+
+    function diaryMemoryText() {
+      const diaries = getDiaries();
+      const today = shiftDateKey(0);
+      const blocks = [];
+      for (let ago = 29; ago >= 0; ago -= 1) {
+        const key = shiftDateKey(ago);
+        const text = String(diaries[key]?.text || "").trim();
+        if (!text) continue;
+        const label = key === today ? `${key}（今天已寫下的日記，可能還沒包含剛說的這句）` : key;
+        blocks.push(`${label}\n${clipChars(text, 800)}`);
+      }
+      while (blocks.length > 1 && blocks.join("\n\n").length > 12000) blocks.shift();
+      if (!blocks.length) return "";
+      return `【記憶：過去30天日記，不是這次說的話】\n回答仍只針對這次語音。\n\n${blocks.join("\n\n")}`;
     }
 
     function requireProxyUrl() {
@@ -1058,11 +1230,26 @@
       if (currentView === "diary") renderDiary();
     }
 
+    function showDiaryMonth(monthKey, dateKey) {
+      diaryMonth = monthKey;
+      if (dateKey !== undefined) {
+        selectedDiaryDate = dateKey;
+      } else {
+        const days = diaryDatesInMonth(monthKey);
+        selectedDiaryDate = days[0] || "";
+      }
+      diaryStatus.textContent = "";
+      renderDiary();
+    }
+
     function renderDiary() {
-      const dates = listDiaryDates();
-      if (!dates.includes(selectedDiaryDate)) selectedDiaryDate = dates[0];
+      if (!diaryMonth) diaryMonth = currentMonthKey();
+      monthLabel.textContent = monthTitle(diaryMonth);
+      monthNext.disabled = diaryMonth >= currentMonthKey();
+      const days = diaryDatesInMonth(diaryMonth);
+      const inMonth = Boolean(selectedDiaryDate) && selectedDiaryDate.startsWith(`${diaryMonth}-`);
       dateStrip.innerHTML = "";
-      dates.forEach((dateKey) => {
+      days.forEach((dateKey) => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = `date-btn${dateKey === selectedDiaryDate ? " active" : ""}`;
@@ -1075,18 +1262,51 @@
         dateStrip.appendChild(btn);
       });
 
-      const entry = getDiaries()[selectedDiaryDate];
+      const entry = inMonth ? getDiaries()[selectedDiaryDate] : null;
+      const text = String(entry?.text || "").trim();
       diaryBody.innerHTML = "";
-      if (entry && entry.text) {
+      diaryBody.classList.toggle("is-editable", Boolean(text));
+      if (text) {
         diaryBody.textContent = entry.text;
       } else {
         const empty = document.createElement("div");
         empty.className = "diary-empty";
-        empty.textContent = "這一天還沒有日記";
+        empty.textContent = inMonth ? "這一天還沒有日記" : "這個月還沒有日記";
         diaryBody.appendChild(empty);
       }
-      diaryBtn.textContent = entry && entry.text ? "重新生成這一天的日記" : "生成這一天的日記";
-      diaryBtn.disabled = diaryGenerating;
+      diaryBtn.textContent = text ? "重新生成這一天的日記" : "生成這一天的日記";
+      diaryBtn.disabled = diaryGenerating || !inMonth;
+    }
+
+    function openDiaryEditor() {
+      const entry = getDiaries()[selectedDiaryDate];
+      if (!entry || !String(entry.text || "").trim()) return;
+      diaryEditorDate.textContent = dateLabel(selectedDiaryDate);
+      diaryEditorInput.value = entry.text;
+      diaryEditor.setAttribute("aria-hidden", "false");
+      diaryEditorInput.focus();
+    }
+
+    function closeDiaryEditor() {
+      if (diaryEditor.getAttribute("aria-hidden") !== "false") return;
+      const text = diaryEditorInput.value.trim();
+      const diaries = getDiaries();
+      const current = String(diaries[selectedDiaryDate]?.text || "").trim();
+      if (text !== current) {
+        if (!text) {
+          delete diaries[selectedDiaryDate];
+        } else {
+          const prev = diaries[selectedDiaryDate] || {};
+          diaries[selectedDiaryDate] = {
+            text,
+            createdAt: prev.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+        }
+        writeJson(DIARY_STORAGE_KEY, diaries);
+      }
+      diaryEditor.setAttribute("aria-hidden", "true");
+      if (currentView === "diary") renderDiary();
     }
 
     function renderTodayChat() {
@@ -1104,11 +1324,41 @@
       generateDiary(selectedDiaryDate, { manual: true });
     });
 
+    monthPrev.addEventListener("click", () => {
+      showDiaryMonth(shiftMonth(diaryMonth || currentMonthKey(), -1));
+    });
+
+    monthNext.addEventListener("click", () => {
+      if (monthNext.disabled) return;
+      showDiaryMonth(shiftMonth(diaryMonth || currentMonthKey(), 1));
+    });
+
+    monthToday.addEventListener("click", () => {
+      showDiaryMonth(currentMonthKey(), shiftDateKey(0));
+    });
+
+    diaryBody.addEventListener("click", () => {
+      openDiaryEditor();
+    });
+
+    diaryEditorClose.addEventListener("click", () => {
+      closeDiaryEditor();
+    });
+
+    diaryEditorBackdrop.addEventListener("click", () => {
+      closeDiaryEditor();
+    });
+
+    diaryEditorInput.addEventListener("blur", () => {
+      closeDiaryEditor();
+    });
+
     // 初始化頁面
     function init() {
       modelLabel.textContent = GEMINI_MODEL;
       avatarImg.src = MODES[currentMode].avatar;
       selectedDiaryDate = shiftDateKey(0);
+      diaryMonth = currentMonthKey();
       applyModeCharacterUI();
       renderTodayChat();
       showView("chat");
@@ -1305,6 +1555,16 @@
           last.parts.push(...currentParts);
         } else {
           contents.push({ role: "user", parts: currentParts });
+        }
+
+        const memory = diaryMemoryText();
+        if (memory) {
+          const first = contents[0];
+          if (first && first.role === "user") {
+            first.parts.unshift({ text: memory });
+          } else {
+            contents.unshift({ role: "user", parts: [{ text: memory }] });
+          }
         }
 
         const requestBody = {
@@ -1593,7 +1853,12 @@
 
     replyStage.addEventListener("click", endSpeaking);
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") endSpeaking();
+      if (event.key !== "Escape") return;
+      if (diaryEditor.getAttribute("aria-hidden") === "false") {
+        closeDiaryEditor();
+        return;
+      }
+      endSpeaking();
     });
 
     async function requestGeminiText(systemPrompt, userText) {
