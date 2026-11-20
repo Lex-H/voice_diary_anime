@@ -742,6 +742,52 @@
       border-color: rgba(255, 255, 255, 0.08);
     }
 
+    .settings-panel {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding:
+        max(16px, env(safe-area-inset-top))
+        max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .settings-panel[aria-hidden="false"] {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .settings-card {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 420px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(12, 16, 28, 0.96);
+      border: 1px solid rgba(227, 193, 120, 0.35);
+    }
+
+    .settings-card .mute-btn,
+    .settings-card .diary-btn {
+      width: 100%;
+    }
+
+    .settings-danger {
+      border-color: rgba(255, 59, 92, 0.7);
+      color: #ff8fa3;
+    }
+
     .reply-stage {
       position: fixed;
       inset: 0;
@@ -915,7 +961,7 @@
     <!-- 頂部欄：模式切換 -->
     <header class="top-bar">
       <div class="top-actions">
-        <button type="button" class="mute-btn" id="muteBtn" aria-pressed="false" aria-label="關閉音效">音效開</button>
+        <button type="button" class="mute-btn" id="settingsBtn" aria-haspopup="dialog">設定</button>
         <div class="mode-switcher" id="viewSwitcher">
           <button class="mode-btn active" data-view="chat">對話</button>
           <button class="mode-btn" data-view="diary">日記</button>
@@ -996,6 +1042,20 @@
       </div>
     </div>
   </main>
+
+  <div class="settings-panel" id="settingsPanel" aria-hidden="true">
+    <button type="button" class="stage-backdrop" id="settingsBackdrop" aria-label="關閉設定"></button>
+    <div class="settings-card" role="dialog" aria-labelledby="settingsTitle">
+      <div class="diary-editor-bar">
+        <span id="settingsTitle">設定</span>
+        <button type="button" class="month-today" id="settingsClose">關閉</button>
+      </div>
+      <button type="button" class="mute-btn" id="muteBtn" aria-pressed="false" aria-label="關閉音效">音效開</button>
+      <button type="button" class="diary-btn" id="exportDiaryBtn">匯出全部日記為 TXT</button>
+      <button type="button" class="diary-btn settings-danger" id="clearDataBtn">清除本地資料</button>
+      <div class="diary-status" id="settingsNote"></div>
+    </div>
+  </div>
 
   <div class="diary-editor" id="diaryEditor" aria-hidden="true">
     <button type="button" class="stage-backdrop" id="diaryEditorBackdrop" aria-label="完成編輯"></button>
@@ -1124,6 +1184,14 @@
     const stopIcon = document.getElementById("stopIcon");
     const recordHint = document.getElementById("recordHint");
     const muteBtn = document.getElementById("muteBtn");
+    const settingsBtn = document.getElementById("settingsBtn");
+    const settingsPanel = document.getElementById("settingsPanel");
+    const settingsClose = document.getElementById("settingsClose");
+    const settingsBackdrop = document.getElementById("settingsBackdrop");
+    const settingsNote = document.getElementById("settingsNote");
+    const exportDiaryBtn = document.getElementById("exportDiaryBtn");
+    const clearDataBtn = document.getElementById("clearDataBtn");
+    let clearArmed = false;
     const replyStage = document.getElementById("replyStage");
     const stageImg = document.getElementById("stageImg");
     const stageName = document.getElementById("stageName");
@@ -1528,6 +1596,30 @@
       await startRecording();
     });
 
+    settingsBtn.addEventListener("click", () => {
+      if (phase !== "idle" || micRequesting) return;
+      openSettings();
+    });
+
+    settingsClose.addEventListener("click", closeSettings);
+    settingsBackdrop.addEventListener("click", closeSettings);
+
+    exportDiaryBtn.addEventListener("click", () => {
+      clearArmed = false;
+      paintClearButton();
+      exportDiariesTxt();
+    });
+
+    clearDataBtn.addEventListener("click", () => {
+      if (!clearArmed) {
+        clearArmed = true;
+        paintClearButton();
+        settingsNote.textContent = "將刪除本機全部對話與日記，無法復原。";
+        return;
+      }
+      clearLocalData();
+    });
+
     muteBtn.addEventListener("click", () => {
       unlockAudio();
       if (!sfxMuted) playTap();
@@ -1808,6 +1900,66 @@
       muteBtn.textContent = sfxMuted ? "音效關" : "音效開";
     }
 
+    function paintClearButton() {
+      clearDataBtn.textContent = clearArmed ? "再按一次確認清除" : "清除本地資料";
+    }
+
+    function openSettings() {
+      clearArmed = false;
+      paintClearButton();
+      settingsNote.textContent = "";
+      settingsPanel.setAttribute("aria-hidden", "false");
+    }
+
+    function closeSettings() {
+      clearArmed = false;
+      paintClearButton();
+      settingsPanel.setAttribute("aria-hidden", "true");
+    }
+
+    function exportDiariesTxt() {
+      const diaries = getDiaries();
+      const keys = Object.keys(diaries)
+        .filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key) && String(diaries[key]?.text || "").trim())
+        .sort();
+      if (!keys.length) {
+        settingsNote.textContent = "尚無日記可匯出";
+        return;
+      }
+      const now = new Date();
+      const lines = [
+        "# 語音日記匯出",
+        `# 匯出時間：${formatDateKey(now)} ${formatClock(now)}`,
+        ""
+      ];
+      keys.forEach((key) => {
+        lines.push(`========== ${key} ==========`);
+        lines.push(String(diaries[key].text).trim());
+        lines.push("");
+      });
+      const blob = new Blob([`\uFEFF${lines.join("\n")}`], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `voice_diary_export_${formatDateKey(now)}.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+      settingsNote.textContent = "已開始下載";
+    }
+
+    function clearLocalData() {
+      localStorage.removeItem(CHAT_STORAGE_KEY);
+      localStorage.removeItem(DIARY_STORAGE_KEY);
+      selectedDiaryDate = shiftDateKey(0);
+      diaryMonth = currentMonthKey();
+      renderTodayChat();
+      if (currentView === "diary") renderDiary();
+      refreshOpening();
+      clearArmed = false;
+      paintClearButton();
+      settingsNote.textContent = "已清除本機對話與日記";
+    }
+
     function unlockAudio() {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
@@ -1946,6 +2098,7 @@
       recordHint.textContent = hintCopy[phase];
       recordBtn.classList.toggle("recording", phase === "listening");
       recordBtn.disabled = phase === "thinking" || phase === "speaking";
+      settingsBtn.disabled = phase !== "idle";
       micIcon.classList.toggle("hidden", phase === "listening");
       stopIcon.classList.toggle("hidden", phase !== "listening");
       syncStage();
@@ -1973,6 +2126,10 @@
       if (event.key !== "Escape") return;
       if (diaryEditor.getAttribute("aria-hidden") === "false") {
         closeDiaryEditor();
+        return;
+      }
+      if (settingsPanel.getAttribute("aria-hidden") === "false") {
+        closeSettings();
         return;
       }
       endSpeaking();
