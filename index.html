@@ -101,39 +101,10 @@
       display: flex;
       flex-wrap: wrap;
       gap: 14px;
-      justify-content: space-between;
+      justify-content: flex-end;
       align-items: center;
       padding-bottom: 18px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .api-box {
-      display: flex;
-      align-items: center;
-      background: rgba(8, 11, 20, 0.7);
-      border: 1px solid rgba(227, 193, 120, 0.3);
-      border-radius: 8px;
-      padding: 6px 12px;
-      flex: 1;
-      min-width: 230px;
-    }
-
-    .label-tag {
-      font-size: 12px;
-      color: var(--gold-accent);
-      font-weight: bold;
-      margin-right: 10px;
-      white-space: nowrap;
-      letter-spacing: 1px;
-    }
-
-    .api-box input {
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--text-main);
-      width: 100%;
-      font-size: 13px;
     }
 
     /* 模式切換按鈕組 */
@@ -560,18 +531,8 @@
     <span class="corner corner-bl"></span>
     <span class="corner corner-br"></span>
 
-    <!-- 頂部欄：API Key 與 模式切換 -->
+    <!-- 頂部欄：模式切換 -->
     <header class="top-bar">
-      <div class="api-box">
-        <span class="label-tag">✦ API KEY</span>
-        <input 
-          type="password" 
-          id="apiKeyInput" 
-          placeholder="貼上你的 Gemini API Key..." 
-          autocomplete="off"
-        />
-      </div>
-
       <div class="top-actions">
         <div class="mode-switcher" id="viewSwitcher">
           <button class="mode-btn active" data-view="chat">對話</button>
@@ -683,6 +644,7 @@
 
     // Gemini 3 系列最適合音訊直傳理解的主力模型 (亦可改為 "gemini-3.5-flash-lite")
     const GEMINI_MODEL = "gemini-3.8-flash";
+    const GEMINI_PROXY_URL = "https://gemini-proxy-198574322039.asia-east1.run.app";
     const CHAT_STORAGE_KEY = "voice_diary_chats";
     const DIARY_STORAGE_KEY = "voice_diary_entries";
     const DIARY_PROMPT =
@@ -698,7 +660,7 @@
         name: "星瞳",
         statusTagline: "永遠樂於傾聽你的心事",
         welcomeMessage:
-          "嗨呀～✨ 先幫我在左上方把 Gemini API Key 填好喔！然後再點一下下面的麥克風按鈕，跟我說說話吧～我已經準備好要聽你說囉！♡(≧▽≦)♡",
+          "嗨呀～✨ 點一下下面的麥克風按鈕，跟我說說話吧～我已經準備好要聽你說囉！♡(≧▽≦)♡",
         badge: "Listener",
         avatar: CUTE_GIRL_AVATAR,
         systemPrompt:
@@ -708,7 +670,7 @@
         name: "智庫終端",
         statusTagline: "全功能智慧分析機構",
         welcomeMessage:
-          "檢測到尚未載入金鑰。請先前往介面上方輸入有效的 Gemini API Key 完成認證，隨後觸發下方麥克風模組建立語音輸入串流。\n\n傳輸通道就緒後，請開始發聲。我正在聆聽。",
+          "傳輸通道就緒。請觸發下方麥克風模組建立語音輸入串流。\n\n通道開啟後，請開始發聲。我正在聆聽。",
         badge: "TACTICAL ARCHIVE",
         avatar: EXPERT_AVATAR,
         systemPrompt:
@@ -727,8 +689,7 @@
     let mediaRecorder = null;
     let audioChunks = [];
 
-    const apiKeyInput = document.getElementById("apiKeyInput");
-    const modeBtns = document.querySelectorAll(".mode-btn");
+    const modeBtns = document.querySelectorAll("#modeSwitcher .mode-btn");
     const avatarImg = document.getElementById("avatarImg");
     const modeBadge = document.getElementById("modeBadge");
     const charName = document.getElementById("charName");
@@ -819,25 +780,8 @@
       return [...keys].filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)).sort().reverse();
     }
 
-    function loadApiKey() {
-      try {
-        let savedKey = localStorage.getItem("GEMINI_API_KEY");
-        if (!savedKey) {
-          savedKey = sessionStorage.getItem("GEMINI_API_KEY");
-          if (savedKey) localStorage.setItem("GEMINI_API_KEY", savedKey);
-        }
-        return savedKey || "";
-      } catch (e) {
-        return "";
-      }
-    }
-
-    function saveApiKey(value) {
-      try {
-        localStorage.setItem("GEMINI_API_KEY", value.trim());
-      } catch (e) {
-        // 忽略部分嚴格本地 file:// 隱私模式下的 storage 限制
-      }
+    function requireProxyUrl() {
+      return GEMINI_PROXY_URL;
     }
 
     function applyModeCharacterUI({ preserveStatus = false } = {}) {
@@ -918,12 +862,6 @@
       renderTodayChat();
       showView("chat");
 
-      const savedKey = loadApiKey();
-      if (savedKey) apiKeyInput.value = savedKey;
-      const commitApiKey = () => saveApiKey(apiKeyInput.value);
-      apiKeyInput.addEventListener("change", commitApiKey);
-      apiKeyInput.addEventListener("blur", commitApiKey);
-
       scheduleDiaryTick();
       maybeCatchUpDiary();
     }
@@ -955,13 +893,6 @@
     // 錄音按鈕：按一下開始錄音，再按一下結束並發送給 Gemini 3.8
     // ============================================================================
     recordBtn.addEventListener("click", async () => {
-      saveApiKey(apiKeyInput.value);
-      if (!apiKeyInput.value.trim()) {
-        alert("請先在左上角輸入你的 Gemini API Key 喔！");
-        apiKeyInput.focus();
-        return;
-      }
-
       if (!isRecording) {
         await startRecording();
       } else {
@@ -1077,7 +1008,6 @@
     }
 
     async function sendAudioToGemini(audioBlob, mimeType, priorMessages, userBubble) {
-      const apiKey = apiKeyInput.value.trim();
       const activeConfig = MODES[currentMode];
 
       updateStatus("thinking", `${activeConfig.name} 正在解析語音共鳴...`);
@@ -1085,7 +1015,7 @@
 
       try {
         const base64Audio = await blobToBase64(audioBlob);
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const endpoint = requireProxyUrl();
         const contents = foldConversation(priorMessages);
         const currentParts = [
           {
@@ -1109,6 +1039,7 @@
         }
 
         const requestBody = {
+          model: GEMINI_MODEL,
           systemInstruction: {
             parts: [{
               text: `${activeConfig.systemPrompt}\n回覆必須是 JSON 物件，不要加 markdown。transcript 是使用者語音的逐字稿，保留原本用詞。reply 才是你的回答，並遵守上面的字數與語氣限制。`
@@ -1181,7 +1112,7 @@
         console.error("Gemini API 調用錯誤：", error);
         if (userBubble) userBubble.remove();
         appendMessage("ai", `⚠️ 終端連線異常：${error.message}`, "系統警告", { persist: false });
-        updateStatus("idle", "請求失敗 · 請檢查 API Key 或網路連線");
+        updateStatus("idle", "請求失敗 · 請檢查網路連線");
       } finally {
         recordBtn.disabled = false;
       }
@@ -1229,12 +1160,13 @@
       statusText.textContent = message;
     }
 
-    async function requestGeminiText(apiKey, systemPrompt, userText) {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    async function requestGeminiText(systemPrompt, userText) {
+      const endpoint = requireProxyUrl();
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          model: GEMINI_MODEL,
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: "user", parts: [{ text: userText }] }],
           generationConfig: { temperature: 0.5 }
@@ -1264,22 +1196,12 @@
         if (manual) diaryStatus.textContent = notice;
         return;
       }
-      const apiKey = apiKeyInput.value.trim();
-      if (!apiKey) {
-        const notice = "請先在左上方填入 Gemini API Key。";
-        if (manual) {
-          diaryStatus.textContent = notice;
-          apiKeyInput.focus();
-        }
-        return;
-      }
 
       diaryGenerating = true;
       diaryBtn.disabled = true;
       diaryStatus.textContent = "正在整理日記…";
       try {
         const text = await requestGeminiText(
-          apiKey,
           DIARY_PROMPT,
           `日期：${dateKey}\n\n${conversationTranscript(dateKey)}`
         );
