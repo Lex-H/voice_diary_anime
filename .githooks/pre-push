@@ -1,0 +1,26 @@
+#!/bin/sh
+# 拒絕將 AGENTS.md / PROJECT_GUIDE.md 納入推送的提交
+PROTECTED='^(AGENTS\.md|PROJECT_GUIDE\.md)$'
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  [ "$local_oid" = "0000000000000000000000000000000000000000" ] && continue
+
+  if [ "$remote_oid" = "0000000000000000000000000000000000000000" ]; then
+    range="$local_oid"
+  else
+    range="${remote_oid}..${local_oid}"
+  fi
+
+  if git diff --name-only "$range" 2>/dev/null | grep -qE "$PROTECTED"; then
+    echo "pre-push: 已取消推送。"
+    echo "AGENTS.md / PROJECT_GUIDE.md 僅限本機，不得出現在要推到遠端的提交裡。"
+    echo ""
+    echo "處理方式："
+    echo "  1) 不要 push 含這兩個檔案的提交；或"
+    echo "  2) 用 rebase / reset 把這兩個檔案從推送歷史中移出後再 push。"
+    echo "  3) 本機更新守則: git add -f AGENTS.md PROJECT_GUIDE.md && git commit"
+    exit 1
+  fi
+done
+
+exit 0
